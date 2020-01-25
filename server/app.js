@@ -11,6 +11,8 @@ app.get('/', (req, res) => {
   res.send({ ok: 'probably' })
 })
 
+app.use('/assassin', require('./assassin.js'))
+
 app.use((req, res, next) => {
   res.status(404).send({ url: req.originalUrl, problem: 'do not know what to do' })
 })
