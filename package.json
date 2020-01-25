@@ -1,0 +1,20 @@
+{
+  "name": "assassin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server/app.js",
+  "scripts": {
+    "test": "standard --verbose | snazzy",
+    "start": "node server/app.js"
+  },
+  "author": "Orbiit",
+  "license": "MIT",
+  "devDependencies": {
+    "snazzy": "^8.0.0",
+    "standard": "^14.3.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1"
+  }
+}
