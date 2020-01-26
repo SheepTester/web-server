@@ -124,12 +124,14 @@ module.exports = (async () => {
         const targetIndex = Math.floor(Math.random() * i)
         const target = players[targetIndex]
         players[i][1].target = target[0]
+        target[1].assassin = players[i][0]
         // Swap target with next item so its target gets set etc etc
         players[targetIndex] = players[i - 1]
         players[i - 1] = target
       } else {
         // Last item targets first item
         players[i][1].target = players[players.length - 1][0]
+        players[players.length - 1][1].assassin = players[i][0]
       }
     }
   }
@@ -299,16 +301,27 @@ module.exports = (async () => {
     if (target) {
       // Session user should be owner of the game
       assert(user.myGames.includes(gameID), 'Only owners can kick!')
+      assert(!game.ended, 'Game has ended!')
       targetUsername = target
       targetUser = users[target]
     } else {
       assert(!game.started, 'Game already started!')
     }
     assert(targetUser.games.includes(gameID), 'User is not a player, no need to kick!')
+
+    if (game.started) {
+      const targetPlayer = game.players[targetUsername]
+      // Redirect target
+      game.players[targetPlayer.assassin].target = targetPlayer.target
+      game.players[targetPlayer.target].assassin = targetPlayer.assassin
+      game.alive--
+      if (game.alive === 1) {
+        game.ended = true
+      }
+    }
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
-    // TODO: If the game has started, should check to see if they were the penultimate person to end the game
-    // Also, redirect targets to account for missing person
+
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'if i didnt goof' })
   }))
@@ -355,6 +368,8 @@ module.exports = (async () => {
 
     player.kills++
     player.target = target.target
+    game.players[target.target].assassin = username
+    player.code = 'TODO' // Regenerate code
 
     delete target.target
     game.alive--

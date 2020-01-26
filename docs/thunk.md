@@ -22,6 +22,7 @@ When creating the game object, it needs to store the following:
   "players": {
     "player-username": {
       "target": "target-username",
+      "assassin": "another-username",
       "kills": 0,
       "code": "kill code"
     }
