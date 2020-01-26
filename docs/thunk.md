@@ -23,8 +23,7 @@ When creating the game object, it needs to store the following:
     "player-username": {
       "target": "target-username",
       "kills": 0,
-      "code": "kill code",
-      "dead": false
+      "code": "kill code"
     }
   },
   "codes": [
@@ -63,15 +62,15 @@ When the penultimate person is killed, the game ends.
 
 This all requires:
 
-- Create new game (session, name, description) -> game ID
+- POST `/create-game` Create new game (session, name, description) -> game ID
 - Create join code (session, game) -> join code
 - Revoke join code (session, code) -> ok
-- Set game settings (session, game, info...) -> ok
-- Get game settings (session, game) -> info...
-- Get game info (game) -> info...
-- Join game (session, code) -> game ID
-- Remove player (session, game, player) -> ok
-- Start game (session, game) -> ok
-- Get status, kill code, and target (session, game) -> is dead?, kill code, player username, name
-- Kill target (session, game, kill code) -> ok
-- Shuffle targets (session, game) -> ok
+- POST `/game-settings` Set game settings (session, game, info...) -> ok
+- GET `/game-settings` Get game settings (session, game) -> info...
+- GET `/game` Get game info (game) -> info...
+- POST `/join` Join game (session, code) -> game ID
+- POST `/leave` Remove player (session, game, player) -> ok
+- POST `/start` Start game (session, game) -> ok
+- GET `/status` Get status, kill code, and target (session, game) -> is dead?, kill code, player username, name
+- POST `/kill` Kill target (session, game, kill code) -> ok
+- POST `/shuffle` Shuffle targets (session, game) -> ok

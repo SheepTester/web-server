@@ -13,7 +13,7 @@ module.exports = (async () => {
   const [usersDB, sessionsDB, gamesDB] = await Promise.all([
     low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
     low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
-    low(new FileAsync(path.resolve(__dirname, './db-games.json')), { defaultValue: [] })
+    low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] }))
   ])
   const [users, sessions, games] = [usersDB, sessionsDB, gamesDB].map(db => db.value())
 
@@ -118,9 +118,7 @@ module.exports = (async () => {
     }
   }
 
-  function shuffleTargets (game) {
-    const players = Object.entries(game.players)
-    assert(players.length >= 2, 'Not enough players!')
+  function shuffleTargets (players) {
     for (let i = players.length; i--;) {
       if (i > 0) {
         const targetIndex = Math.floor(Math.random() * i)
@@ -192,8 +190,24 @@ module.exports = (async () => {
   // Public user data (for profiles)
   router.get('/user', asyncHandler(async (req, res) => {
     const { username } = req.query
-    const { name, bio } = users[username]
-    res.send({ name, bio })
+    const { name, bio, myGames, games } = users[username]
+    res.send({
+      name,
+      bio,
+      myGames: myGames.map(game => ({
+        game,
+        name: games[game].name,
+        started: games[game].started,
+        ended: games[game].ended
+      })),
+      games: games.map(game => ({
+        game,
+        name: games[game].name,
+        started: games[game].started,
+        ended: games[game].ended,
+        kills: games[game].players[username].kills
+      }))
+    })
   }))
 
   router.post('/create-game', asyncHandler(async (req, res) => {
@@ -232,7 +246,14 @@ module.exports = (async () => {
       name,
       description,
       password,
-      players: Object.keys(players),
+      // Should targets and kill codes be available to the game creator?
+      players: Object.entries(players)
+        .map(([username, { target, kills }]) => ({
+          username,
+          name: users[username].name,
+          alive: !!target,
+          kills
+        })),
       started,
       ended
     })
@@ -244,7 +265,13 @@ module.exports = (async () => {
     res.send({
       name,
       description,
-      players: Object.keys(players),
+      players: Object.entries(players)
+        .map(([username, { target, kills }]) => ({
+          username,
+          name: users[username].name,
+          alive: !!target,
+          kills
+        })),
       started,
       ended
     })
@@ -258,7 +285,7 @@ module.exports = (async () => {
     // Case insensitive
     assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
     user.games.push(gameID)
-    game.players[username] = { kills: 0, dead: false, code: 'TODO' }
+    game.players[username] = { kills: 0, code: 'TODO' }
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'with luck' })
   }))
@@ -290,10 +317,66 @@ module.exports = (async () => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     assert(!game.started, 'Game already started!')
-    shuffleTargets(game)
+
+    const players = Object.entries(game.players)
+    assert(players.length >= 2, 'Not enough players!')
+    shuffleTargets(players)
+    game.alive = players.length
     game.started = true
+
     await gamesDB.write()
     res.send({ ok: 'if all goes well' })
+  }))
+
+  router.get('/status', asyncHandler(async (req, res) => {
+    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { game } = getGame(req)
+    assert(game.started, 'Game hasn\'t started!')
+    assert(!game.ended, 'Game has ended!')
+    assert(has(game.players, username), 'Not a player!')
+
+    const { target, code } = game.players[username]
+    res.send({ target, code })
+  }))
+
+  router.post('/kill', asyncHandler(async (req, res) => {
+    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { game } = getGame(req)
+    assert(game.started, 'Game hasn\'t started!')
+    assert(!game.ended, 'Game has ended!')
+    assert(has(game.players, username), 'Not a player!')
+
+    const player = game.players[username]
+    assert(player.target, 'Player was killed!')
+    const target = game.players[player.target]
+
+    const { code } = req.body
+    assert(code === target.code, 'Wrong code!')
+
+    player.kills++
+    player.target = target.target
+
+    delete target.target
+    game.alive--
+
+    if (game.alive === 1) {
+      game.ended = true
+    }
+
+    await gamesDB.write()
+    res.send({ ok: 'safely' })
+  }))
+
+  router.post('/shuffle', asyncHandler(async (req, res) => {
+    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { game } = getGame(req, user)
+    assert(game.started, 'Game hasn\'t started!')
+    assert(!game.ended, 'Game ended!')
+
+    shuffleTargets(Object.entries(game.players).filter(player => player.target))
+
+    await gamesDB.write()
+    res.send({ ok: 'probably' })
   }))
 
   return router
