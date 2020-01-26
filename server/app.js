@@ -15,11 +15,11 @@
   app.use('/assassin', await require('./assassin.js'))
 
   app.use((req, res, next) => {
-    res.status(404).send({ url: req.originalUrl, problem: 'do not know what to do' })
+    res.status(404).send({ url: req.originalUrl, wucky: 'do not know what to do' })
   })
 
   app.use((err, req, res, next) => {
-    res.status(500).send({ url: req.originalUrl, problem: 'brain hurt', history: err.stack })
+    res.status(500).send({ url: req.originalUrl, wucky: 'brain hurt', problem: err.message, history: err.stack })
   })
 
   app.listen(port, () => {
