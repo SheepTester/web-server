@@ -39,7 +39,7 @@ I think I'll keep this simple. When the game hasn't started, people can join and
 
 I want join and kill codes to be something with high uniqueness but also is easy to remember. Maybe it could be four English words or something (eg "correct horse battery staple").
 
-On game creation, a join code is automatically created. Join codes can be created or revoked, and all can be revoked at once.
+~~On game creation, a join code is automatically created. Join codes can be created or revoked, and all can be revoked at once.~~ Actually, I think I will make this a settable password or something. Apparently assassingame.com has a 4-digit join code and a password.
 
 Mr. Uglieur sees the game settings page, with a "start" button, which is disabled because there's no one in the game yet. It displays the game name and description, which are still editable. When he updates the description, it automatically saves. One join code is listed: *happy otter random code*. He sends this to his friends.
 

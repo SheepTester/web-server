@@ -11,6 +11,7 @@ const FileAsync = require('lowdb/adapters/FileAsync')
 
 const users = low(new FileAsync(path.resolve(__dirname, './db-users.json')))
 const sessions = low(new FileAsync(path.resolve(__dirname, './db-sessions.json')))
+const games = low(new FileAsync(path.resolve(__dirname, './db-games.json')))
 
 function randomID () {
   // I arbitrarily chose 21
@@ -52,7 +53,10 @@ function verifySession (sessionID) {
       return db.unset(sessionID).write()
         .then(() => Promise.reject(new Error('Session expired!')))
     }
-    return users.then(db => db.get(session.user))
+    return users.then(db => ({
+      user: db.get(session.user),
+      username: session.user
+    }))
   })
 }
 
@@ -66,14 +70,14 @@ router.post('/join', asyncHandler(async (req, res) => {
   assert(usernameRegex.test(username))
   assert(!usersDB.has(username).value())
   assert(typeof name === 'string')
-  assert(name.length)
+  assert(name.length > 0)
   assert(goodPassword(password))
   assert(typeof email === 'string')
-  assert(email.length)
+  assert(email.length > 0)
   const salt = randomID()
   const hashedPassword = await hashPassword(password, salt)
   const [, sessionID] = await Promise.all([
-    users.then(db => db
+    usersDB
       .set(username, {
         name,
         password: hashedPassword,
@@ -83,7 +87,7 @@ router.post('/join', asyncHandler(async (req, res) => {
         games: [],
         myGames: []
       })
-      .write()),
+      .write(),
     createSession(username)
   ])
   res.send({ session: sessionID })
@@ -102,12 +106,12 @@ router.post('/logout', asyncHandler(async (req, res) => {
   res.send({ ok: 'ideally' })
 }))
 
-router.post('/set', asyncHandler(async (req, res) => {
-  const user = await verifySession(req.get('X-Session-ID'))
+router.post('/user-settings', asyncHandler(async (req, res) => {
+  const { user } = await verifySession(req.get('X-Session-ID'))
   const { name, password, oldPassword, email, bio } = req.body
   if (name) {
     assert(typeof name === 'string')
-    assert(name.length)
+    assert(name.length > 0)
     user.set('name', name)
   }
   if (password) {
@@ -115,11 +119,11 @@ router.post('/set', asyncHandler(async (req, res) => {
     // Verify that user knows old password
     const { salt, password: oldHash } = user.value()
     assert(await hashPassword(oldPassword, salt) === oldHash)
-    user.set('password', hashPassword(password, salt))
+    user.set('password', await hashPassword(password, salt))
   }
   if (email) {
     assert(typeof email === 'string')
-    assert(email.length)
+    assert(email.length > 0)
     user.set('email', email)
   }
   if (bio) {
@@ -132,17 +136,130 @@ router.post('/set', asyncHandler(async (req, res) => {
 
 // Authenticated user data (for user options)
 // TODO: Send games and myGames
-router.get('/get', asyncHandler(async (req, res) => {
-  const user = await verifySession(req.get('X-Session-ID'))
+router.get('/user-settings', asyncHandler(async (req, res) => {
+  const { user } = await verifySession(req.get('X-Session-ID'))
   const { name, email, bio } = user.value()
   res.send({ name, email, bio })
 }))
 
 // Public user data (for profiles)
-router.get('/get-user', asyncHandler(async (req, res) => {
+router.get('/user', asyncHandler(async (req, res) => {
   const { username } = req.query
   const { name, bio } = await users.then(db => db.get(username).value())
   res.send({ name, bio })
+}))
+
+router.post('/create-game', asyncHandler(async (req, res) => {
+  const { user } = await verifySession(req.get('X-Session-ID'))
+  const { name, description, password } = req.body
+  assert(typeof name === 'string')
+  assert(name.length > 0)
+  assert(typeof description === 'string')
+  assert(typeof password === 'string')
+  const gamesDB = await games
+  const gameID = gamesDB.keys().size().value().toString()
+  assert(!gamesDB.has(gameID).value())
+  await Promise.all([
+    user.get('myGames').push(gameID).write(),
+    gamesDB.set(gameID, {
+      name,
+      description,
+      password,
+      players: {},
+      started: false,
+      ended: false
+    }).write()
+  ])
+  res.send({ game: gameID })
+}))
+
+router.post('/game-settings', asyncHandler(async (req, res) => {
+  const { user } = await verifySession(req.get('X-Session-ID'))
+  const { game: gameID } = req.query
+  const { name, description, password } = req.body
+  const game = await gamesDB.then(db => db.get(gameID))
+  if (name) {
+    assert(typeof name === 'string')
+    assert(name.length > 0)
+    game.set('name', name)
+  }
+  if (description) {
+    assert(typeof description === 'string')
+    game.set('description', description)
+  }
+  if (password) {
+    assert(typeof password === 'string')
+    game.set('password', password)
+  }
+  await game.write()
+  res.send({ ok: 'with luck' })
+}))
+
+router.get('/game-settings', asyncHandler(async (req, res) => {
+  const { user } = await verifySession(req.get('X-Session-ID'))
+  const { game: gameID } = req.query
+  const game = await gamesDB.then(db => db.get(gameID).value())
+  assert(game)
+  const { name, description, password, players, started, ended } = game
+  res.send({
+    name,
+    description,
+    password,
+    players: Object.keys(players),
+    started,
+    ended
+  })
+}))
+
+router.get('/game', asyncHandler(async (req, res) => {
+  const { game: gameID } = req.query
+  const game = await gamesDB.then(db => db.get(gameID).value())
+  assert(game)
+  const { name, description, players, started, ended } = game
+  res.send({
+    name,
+    description,
+    players: Object.keys(players),
+    started,
+    ended
+  })
+}))
+
+router.post('/join', asyncHandler(async (req, res) => {
+  const { user, username } = await verifySession(req.get('X-Session-ID'))
+  const { game: gameID } = req.query
+  const { password } = req.body
+  const game = await gamesDB.then(db => db.get(gameID))
+  // Case insensitive
+  assert(game.get('password').toLower().isEqual(password.toLowerCase()).value())
+  await Promise.all([
+    user.get('games').push(game).write(),
+    game.get('players').set(username, {
+      kills: 0,
+      dead: false
+    }).write()
+  ])
+  res.send({ ok: 'with luck' })
+}))
+
+router.post('/leave', asyncHandler(async (req, res) => {
+  const { user, username } = await verifySession(req.get('X-Session-ID'))
+  const { game: gameID } = req.query
+  const { user: target } = req.body
+  const game = await gamesDB.then(db => db.get(gameID))
+  let targetUser = user
+  let targetUsername = username
+  if (target) {
+    // Session user should be owner of the game
+    assert(user.get('myGames').has(gameID))
+    targetUser = usersDB.then(db => db.get(target))
+    targetUsername = target
+  }
+  await Promise.all([
+    targetUser.get('games').pull(gameID).write(),
+    game.get('players').unset(targetUsername).write()
+  ])
+  res.send({ ok: 'if i didnt goof' })
 }))
 
 module.exports = router
