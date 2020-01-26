@@ -349,7 +349,11 @@ module.exports = (async () => {
     assert(has(game.players, username), 'Not a player!')
 
     const { target, code } = game.players[username]
-    res.send({ target, code })
+    res.send({
+      target,
+      targetName: users[target].name,
+      code
+    })
   }))
 
   router.post('/kill', asyncHandler(async (req, res) => {
