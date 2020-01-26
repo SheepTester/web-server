@@ -1,43 +1,43 @@
-module.exports = (async () => {
-  const express = require('express')
-  const router = express.Router()
+const express = require('express')
+const router = express.Router()
+module.exports = router
 
-  const assert = require('assert')
-  const crypto = require('crypto')
-  const { asyncHandler, has } = require('./utils.js')
+const assert = require('assert')
+const crypto = require('crypto')
+const { asyncHandler, has } = require('./utils.js')
 
-  const path = require('path')
-  const low = require('lowdb')
-  const FileAsync = require('lowdb/adapters/FileAsync')
+const path = require('path')
+const low = require('lowdb')
+const FileAsync = require('lowdb/adapters/FileAsync')
 
-  const [usersDB, sessionsDB, gamesDB] = await Promise.all([
-    low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
-    low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
-    low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] }))
-  ])
-  const [users, sessions, games] = [usersDB, sessionsDB, gamesDB].map(db => db.value())
+function randomID () {
+  // I arbitrarily chose 21
+  return crypto.randomBytes(21).toString('hex')
+}
 
-  function randomID () {
-    // I arbitrarily chose 21
-    return crypto.randomBytes(21).toString('hex')
-  }
+function goodPassword (password) {
+  return typeof password === 'string' &&
+    password.length >= 8
+}
 
-  function goodPassword (password) {
-    return typeof password === 'string' &&
-      password.length >= 8
-  }
-
-  function hashPassword (password, salt) {
-    return new Promise((resolve, reject) => {
-      crypto.pbkdf2(password, salt, 10000, 64, 'sha512', (err, hash) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(hash.toString('hex'))
-        }
-      })
+function hashPassword (password, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(password, salt, 10000, 64, 'sha512', (err, hash) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(hash.toString('hex'))
+      }
     })
-  }
+  })
+}
+
+Promise.all([
+  low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] }))
+]).then(async ([usersDB, sessionsDB, gamesDB]) => {
+  const [users, sessions, games] = [usersDB, sessionsDB, gamesDB].map(db => db.value())
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
@@ -76,7 +76,7 @@ module.exports = (async () => {
 
   const usernameRegex = /^[a-z0-9_-]{3,}$/
 
-  function userSettings (user, { name, password, oldPassword, email, bio }, init) {
+  async function userSettings (user, { name, password, oldPassword, email, bio }, init) {
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
       assert(name.length > 0, 'Empty name!')
@@ -150,7 +150,7 @@ module.exports = (async () => {
       games: [],
       myGames: []
     }
-    userSettings(users[username], req.body, true)
+    await userSettings(users[username], req.body, true)
 
     const sessionID = createSession(username)
 
@@ -176,7 +176,7 @@ module.exports = (async () => {
 
   router.post('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    userSettings(user, req.body, false)
+    await userSettings(user, req.body, false)
     await usersDB.write()
     res.send({ ok: 'if i remember' })
   }))
@@ -397,6 +397,4 @@ module.exports = (async () => {
     await gamesDB.write()
     res.send({ ok: 'probably' })
   }))
-
-  return router
-})()
+})
