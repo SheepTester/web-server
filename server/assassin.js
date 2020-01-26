@@ -64,6 +64,16 @@ module.exports = (async () => {
     }
   }
 
+  function getGame (req, authUser) {
+    const { game: gameID } = req.query
+    const game = games[gameID]
+    assert(has(games, gameID), 'Nonexistent game!')
+    if (authUser) {
+      assert(authUser.myGames.includes(gameID), 'Not creator of game!')
+    }
+    return { game, gameID }
+  }
+
   const usernameRegex = /^[a-z0-9_-]{3,}$/
 
   // People can spam-create users
@@ -176,11 +186,8 @@ module.exports = (async () => {
 
   router.post('/game-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game: gameID } = req.query
+    const { game } = getGame(req, user)
     const { name, description, password } = req.body
-    const game = games[gameID]
-    assert(has(games, gameID), 'Nonexistent game!')
-    assert(user.myGames.includes(gameID), 'You are not the owner!')
     if (name) {
       assert(typeof name === 'string', 'Name is not string!')
       assert(name.length > 0, 'Empty name!')
@@ -200,10 +207,7 @@ module.exports = (async () => {
 
   router.get('/game-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game: gameID } = req.query
-    const game = games[gameID]
-    assert(has(games, gameID), 'Nonexistent game!')
-    assert(user.myGames.includes(gameID), 'You are not the owner!')
+    const { game } = getGame(req, user)
     const { name, description, password, players, started, ended } = game
     res.send({
       name,
@@ -216,9 +220,7 @@ module.exports = (async () => {
   }))
 
   router.get('/game', asyncHandler(async (req, res) => {
-    const { game: gameID } = req.query
-    const game = games[gameID]
-    assert(has(games, gameID), 'Nonexistent game!')
+    const { game } = getGame(req)
     const { name, description, players, started, ended } = game
     res.send({
       name,
@@ -231,23 +233,21 @@ module.exports = (async () => {
 
   router.post('/join', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game: gameID } = req.query
+    const { game } = getGame(req)
     const { password } = req.body
-    const game = games[gameID]
+    assert(!game.started, 'Game already started!')
     // Case insensitive
     assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
     user.games.push(gameID)
-    game.players[username] = { kills: 0, dead: false }
+    game.players[username] = { kills: 0, dead: false, code: 'TODO' }
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'with luck' })
   }))
 
   router.post('/leave', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game: gameID } = req.query
+    const { game } = getGame(req)
     const { user: target } = req.body
-    const game = games[gameID]
-    assert(has(games, gameID), 'Nonexistent game!')
     let targetUsername = username
     let targetUser = user
     if (target) {
@@ -255,12 +255,39 @@ module.exports = (async () => {
       assert(user.myGames.includes(gameID), 'Only owners can kick!')
       targetUsername = target
       targetUser = users[target]
+    } else {
+      assert(!game.started, 'Game already started!')
     }
     assert(targetUser.games.includes(gameID), 'User is not a player, no need to kick!')
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
+    // TODO: If the game has started, should check to see if they were the penultimate person to end the game
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'if i didnt goof' })
+  }))
+
+  router.post('/start', asyncHandler(async (req, res) => {
+    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { game } = getGame(req, user)
+    assert(!game.started, 'Game already started!')
+    const players = Object.entries(game.players)
+    assert(players.length >= 2, 'Not enough players!')
+    for (let i = players.length; i--;) {
+      if (i > 0) {
+        const targetIndex = Math.floor(Math.random() * i)
+        const target = players[targetIndex]
+        players[i][1].target = target[0]
+        // Swap target with next item so its target gets set etc etc
+        players[targetIndex] = players[i - 1]
+        players[i - 1] = target
+      } else {
+        // Last item targets first item
+        players[i][1].target = players[players.length - 1][0]
+      }
+    }
+    game.started = true
+    await gamesDB.write()
+    res.send({ ok: 'if all goes well' })
   }))
 
   return router
