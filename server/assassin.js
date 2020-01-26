@@ -76,29 +76,84 @@ module.exports = (async () => {
 
   const usernameRegex = /^[a-z0-9_-]{3,}$/
 
+  function userSettings (user, { name, password, oldPassword, email, bio }, init) {
+    if (init || name !== undefined) {
+      assert(typeof name === 'string', 'Name not string!')
+      assert(name.length > 0, 'Empty name!')
+      user.name = name
+    }
+    if (init || password !== undefined) {
+      assert(goodPassword(password), 'Tasteless password!')
+      if (!init) {
+        // Verify that user knows old password
+        const { salt, password: oldHash } = user
+        assert(await hashPassword(oldPassword, salt) === oldHash, 'Old password matchn\'t!')
+      }
+      user.password = await hashPassword(password, salt)
+    }
+    if (init || email !== undefined) {
+      assert(typeof email === 'string', 'Email not string!')
+      assert(email.length > 0, 'Empty email!')
+      user.email = email
+    }
+    if (bio !== undefined) {
+      assert(typeof bio === 'string', 'Bio not string!')
+      user.bio = bio
+    }
+  }
+
+  function gameSettings (game, { name, description, password }, init) {
+    if (init || name !== undefined) {
+      assert(typeof name === 'string', 'Name is not string!')
+      assert(name.length > 0, 'Empty name!')
+      game.name = name
+    }
+    if (description) {
+      assert(typeof description === 'string', 'Description is not string!')
+      game.description = description
+    }
+    if (init || password !== undefined) {
+      assert(typeof password === 'string', 'Password is not string!')
+      game.password = password
+    }
+  }
+
+  function shuffleTargets (game) {
+    const players = Object.entries(game.players)
+    assert(players.length >= 2, 'Not enough players!')
+    for (let i = players.length; i--;) {
+      if (i > 0) {
+        const targetIndex = Math.floor(Math.random() * i)
+        const target = players[targetIndex]
+        players[i][1].target = target[0]
+        // Swap target with next item so its target gets set etc etc
+        players[targetIndex] = players[i - 1]
+        players[i - 1] = target
+      } else {
+        // Last item targets first item
+        players[i][1].target = players[players.length - 1][0]
+      }
+    }
+  }
+
   // People can spam-create users
   router.post('/create-user', asyncHandler(async (req, res) => {
-    const { username, name, password, email } = req.body
+    const { username } = req.body
     assert(typeof username === 'string', 'Username not a string!')
-    assert(usernameRegex.test(username), 'Tasteless username!')
+    assert(usernameRegex.test(username), 'Boring username!')
     assert(!has(users, username), 'Username taken!')
-    assert(typeof name === 'string', 'Name not a string!')
-    assert(name.length > 0, 'Empty name!')
-    assert(goodPassword(password), 'Boring password!')
-    assert(typeof email === 'string', 'Email not a string!')
-    assert(email.length > 0, 'Empty email!')
+
     const salt = randomID()
-    const hashedPassword = await hashPassword(password, salt)
     users[username] = {
-      name,
-      password: hashedPassword,
       salt,
-      email,
       bio: '',
       games: [],
       myGames: []
     }
-    const sessionID = createSession
+    userSettings(users[username], req.body, true)
+
+    const sessionID = createSession(username)
+
     await Promise.all([usersDB.write(), sessionsDB.write()])
     res.send({ session: sessionID })
   }))
@@ -121,28 +176,7 @@ module.exports = (async () => {
 
   router.post('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { name, password, oldPassword, email, bio } = req.body
-    if (name) {
-      assert(typeof name === 'string', 'Name not string!')
-      assert(name.length > 0, 'Empty name!')
-      user.name = name
-    }
-    if (password) {
-      assert(goodPassword(password), 'Poor password sense!')
-      // Verify that user knows old password
-      const { salt, password: oldHash } = user
-      assert(await hashPassword(oldPassword, salt) === oldHash, 'Old password matchn\'t!')
-      user.password = await hashPassword(password, salt)
-    }
-    if (email) {
-      assert(typeof email === 'string', 'Email not string!')
-      assert(email.length > 0, 'Empty email!')
-      user.email = email
-    }
-    if (bio) {
-      assert(typeof bio === 'string', 'Bio not string!')
-      user.bio = bio
-    }
+    userSettings(user, req.body, false)
     await usersDB.write()
     res.send({ ok: 'if i remember' })
   }))
@@ -164,22 +198,19 @@ module.exports = (async () => {
 
   router.post('/create-game', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { name, description, password } = req.body
-    assert(typeof name === 'string', 'Name not string!')
-    assert(name.length > 0, 'Empty name!')
-    assert(typeof description === 'string', 'Description not string!')
-    assert(typeof password === 'string', 'Password not string!')
+
     const game = {
-      name,
-      description,
-      password,
+      description: '',
       players: {},
       started: false,
       ended: false
     }
+    gameSettings(game, req.body, true)
     games.push(game)
+
     const gameID = games.indexOf(game)
     user.myGames.push(gameID)
+
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ game: gameID })
   }))
@@ -188,19 +219,7 @@ module.exports = (async () => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     const { name, description, password } = req.body
-    if (name) {
-      assert(typeof name === 'string', 'Name is not string!')
-      assert(name.length > 0, 'Empty name!')
-      game.name = name
-    }
-    if (description) {
-      assert(typeof description === 'string', 'Description is not string!')
-      game.description = description
-    }
-    if (password) {
-      assert(typeof password === 'string', 'Password is not string!')
-      game.password = password
-    }
+    gameSettings(game, req.body, false)
     await gamesDB.write()
     res.send({ ok: 'with luck' })
   }))
@@ -262,6 +281,7 @@ module.exports = (async () => {
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
     // TODO: If the game has started, should check to see if they were the penultimate person to end the game
+    // Also, redirect targets to account for missing person
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'if i didnt goof' })
   }))
@@ -270,21 +290,7 @@ module.exports = (async () => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     assert(!game.started, 'Game already started!')
-    const players = Object.entries(game.players)
-    assert(players.length >= 2, 'Not enough players!')
-    for (let i = players.length; i--;) {
-      if (i > 0) {
-        const targetIndex = Math.floor(Math.random() * i)
-        const target = players[targetIndex]
-        players[i][1].target = target[0]
-        // Swap target with next item so its target gets set etc etc
-        players[targetIndex] = players[i - 1]
-        players[i - 1] = target
-      } else {
-        // Last item targets first item
-        players[i][1].target = players[players.length - 1][0]
-      }
-    }
+    shuffleTargets(game)
     game.started = true
     await gamesDB.write()
     res.send({ ok: 'if all goes well' })
