@@ -1,6 +1,8 @@
 const express = require('express')
 const cors = require('cors')
 
+const assert = require('assert')
+
 const port = process.env.NODE_ENV === 'production' ? 80 : 3000
 
 const app = express()
@@ -18,7 +20,11 @@ app.use((req, res, next) => {
 })
 
 app.use((err, req, res, next) => {
-  res.status(500).send({ url: req.originalUrl, wucky: 'brain hurt', problem: err.message, history: err.stack })
+  if (err instanceof assert.AssertionError) {
+    res.status(400).send({ url: req.originalUrl, wucky: 'you bad', mistake: err.message })
+  } else {
+    res.status(500).send({ url: req.originalUrl, wucky: 'brain hurt', problem: err.message, history: err.stack })
+  }
 })
 
 app.listen(port, () => {

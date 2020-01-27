@@ -84,9 +84,9 @@ Promise.all([
     }
     if (init || password !== undefined) {
       assert(goodPassword(password), 'Tasteless password!')
+      const { salt, password: oldHash } = user
       if (!init) {
         // Verify that user knows old password
-        const { salt, password: oldHash } = user
         assert(await hashPassword(oldPassword, salt) === oldHash, 'Old password matchn\'t!')
       }
       user.password = await hashPassword(password, salt)
@@ -185,13 +185,14 @@ Promise.all([
   // TODO: Send games and myGames
   router.get('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { name, email, bio } = user.value()
+    const { name, email, bio } = user
     res.send({ name, email, bio })
   }))
 
   // Public user data (for profiles)
   router.get('/user', asyncHandler(async (req, res) => {
-    const { username } = req.query
+    const { user: username } = req.query
+    assert(has(users, username), 'User doesn\'t exist!')
     const { name, bio, myGames, games } = users[username]
     res.send({
       name,
@@ -224,7 +225,7 @@ Promise.all([
     gameSettings(game, req.body, true)
     games.push(game)
 
-    const gameID = games.indexOf(game)
+    const gameID = games.indexOf(game).toString()
     user.myGames.push(gameID)
 
     await Promise.all([usersDB.write(), gamesDB.write()])
@@ -234,7 +235,6 @@ Promise.all([
   router.post('/game-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
-    const { name, description, password } = req.body
     gameSettings(game, req.body, false)
     await gamesDB.write()
     res.send({ ok: 'with luck' })
@@ -281,7 +281,7 @@ Promise.all([
 
   router.post('/join', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req)
+    const { game, gameID } = getGame(req)
     const { password } = req.body
     assert(!game.started, 'Game already started!')
     // Case insensitive
@@ -294,7 +294,7 @@ Promise.all([
 
   router.post('/leave', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req)
+    const { game, gameID } = getGame(req)
     const { user: target } = req.body
     let targetUsername = username
     let targetUser = user
@@ -302,6 +302,7 @@ Promise.all([
       // Session user should be owner of the game
       assert(user.myGames.includes(gameID), 'Only owners can kick!')
       assert(!game.ended, 'Game has ended!')
+      assert(has(users, target), 'Target doesn\'t exist!')
       targetUsername = target
       targetUser = users[target]
     } else {
@@ -327,7 +328,7 @@ Promise.all([
   }))
 
   router.post('/start', asyncHandler(async (req, res) => {
-    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     assert(!game.started, 'Game already started!')
 
@@ -342,7 +343,7 @@ Promise.all([
   }))
 
   router.get('/status', asyncHandler(async (req, res) => {
-    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
@@ -357,7 +358,7 @@ Promise.all([
   }))
 
   router.post('/kill', asyncHandler(async (req, res) => {
-    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
@@ -387,7 +388,7 @@ Promise.all([
   }))
 
   router.post('/shuffle', asyncHandler(async (req, res) => {
-    const { user, username } = verifySession(req.get('X-Session-ID'))
+    const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
