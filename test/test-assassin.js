@@ -1,3 +1,5 @@
+/* global fetch */
+
 const HOST = 'http://localhost:3000'
 
 const TEST_ID = Math.random().toString(36).slice(2)
@@ -31,7 +33,7 @@ function shouldFail (prom) {
 }
 
 function get (path, session) {
-  return fetch(path, {
+  return fetch(HOST + path, {
     headers: {
       'X-Session-ID': session
     }
@@ -43,7 +45,8 @@ function get (path, session) {
 }
 
 function post (path, session, body) {
-  return fetch(path, {
+  return fetch(HOST + path, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Session-ID': session
@@ -62,13 +65,15 @@ async function test () {
     username: `test-${TEST_ID}-a`,
     name: 'Test user A',
     bio: `I am a byproduct of test ${TEST_ID}!`,
-    password: 'test password A'
+    password: 'test password A',
+    email: 'a@example.com'
   }), 'Make user A')
   const { session: b } = await assert(post('/assassin/create-user', null, {
     username: `test-${TEST_ID}-b`,
     name: 'Test user B',
     bio: `I am also a byproduct of test ${TEST_ID}!`,
-    password: 'test password B'
+    password: 'test password B',
+    email: 'b@example.com'
   }), 'Make user B')
 
   // Change and get info
@@ -90,7 +95,12 @@ async function test () {
 
   // Log out and log in
   await assert(post('/assassin/logout', session), 'Log out A')
+  await assert(shouldFail(post('/assassin/login', null, {
+    username: `test-${TEST_ID}-a`,
+    password: 'wrong password'
+  })), 'Wrong password for A should fail')
   const { session: a } = await assert(post('/assassin/login', null, {
+    username: `test-${TEST_ID}-a`,
     password: 'new password A'
   }), 'Log in A')
 
@@ -137,6 +147,9 @@ async function test () {
   await assert(post(`/assassin/join?game=${game}`, b, {
     password: 'test'
   }), 'B rejoins game')
+
+  // Start game
+  await assert(post(`/assassin/start?game=${game}`, a), 'Start game')
 
   // Get status
   await assert(
