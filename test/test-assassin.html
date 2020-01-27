@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Test assassin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+      .pass {
+        color: green;
+      }
+      .fail {
+        background-color: red;
+        color: white;
+      }
+      .fail::after {
+        content: '(See console for more info)'
+        opacity: 0.5;
+        padding-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="./test-assassin.js" charset="utf-8"></script>
+  </body>
+</html>
