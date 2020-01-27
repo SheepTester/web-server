@@ -4,8 +4,10 @@
   "description": "",
   "main": "server/app.js",
   "scripts": {
-    "test": "standard --verbose | snazzy",
-    "start": "node server/app.js"
+    "serve": "node server/start-server.js",
+    "serve:loop": "git fetch origin master && git reset --hard origin/master && npm install && NODE_ENV=production node server/app.js",
+    "start": "node server/app.js",
+    "test": "standard --verbose | snazzy"
   },
   "author": "Orbiit",
   "license": "MIT",
@@ -17,6 +19,7 @@
     "cors": "^2.8.5",
     "ejs": "^3.0.1",
     "express": "^4.17.1",
+    "forever-monitor": "^2.0.0",
     "lowdb": "^1.0.0"
   }
 }
