@@ -2,7 +2,8 @@ const forever = require('forever-monitor')
 const path = require('path')
 
 const child = new forever.Monitor(['npm', 'run', 'serve:loop'], {
-  silent: false
+  silent: false,
+  env: { NODE_ENV: 'production' }
 })
 
 child.on('restart', () => {

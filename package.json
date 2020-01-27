@@ -5,7 +5,7 @@
   "main": "server/app.js",
   "scripts": {
     "serve": "node server/start-server.js",
-    "serve:loop": "git fetch origin master && git reset --hard origin/master && npm install && NODE_ENV=production node server/app.js",
+    "serve:loop": "git fetch origin master && git reset --hard origin/master && npm install && node server/app.js",
     "start": "node server/app.js",
     "test": "standard --verbose | snazzy"
   },
