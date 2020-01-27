@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 
 const assert = require('assert')
+const { asyncHandler, hashPassword } = require('./utils.js')
 
 const port = process.env.NODE_ENV === 'production' ? 80 : 3000
 
@@ -35,6 +36,18 @@ app.get('/418', (req, res) => {
   }
 })
 
+const restartHash = 'f1794bff3750523268b8aa3bab403a2598f3ff96bc58c0d543b65d634b52eaeff1fc5875b1a59e09bed0a161b9747b2fe76cf40cda8e962f3be2f4044efa34ec'
+const restartSalt = 'You shall never know my password!'
+app.post('/restart', asyncHandler(async (req, res) => {
+  if (await hashPassword(req.body.password, restartSalt) === restartHash) {
+    res.end(() => {
+      server.close()
+    })
+  } else {
+    res.status(401).end()
+  }
+}))
+
 app.use('/assassin', require('./assassin.js'))
 
 app.use((req, res, next) => {
@@ -64,6 +77,6 @@ app.use((err, req, res, next) => {
   }
 })
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log('We are watching.')
 })

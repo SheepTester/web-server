@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>restart server</title>
+    <meta name="description" content="password required"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  </head>
+  <body>
+    <h1>owner recaptcha</h1>
+    <p>do you know the password?</p>
+    <form id="form">
+      <fieldset id="fieldset">
+        <legend>allow us to know</legend>
+        <p><label>password: <input type="password" id="password" autofocus></label></p>
+        <p><button type="submit">yes i do</button></p>
+      </fieldset>
+    </form>
+    <script type="text/javascript">
+      const form = document.getElementById('form')
+      const fieldset = document.getElementById('fieldset')
+      const password = document.getElementById('password')
+      form.addEventListener('submit', e => {
+        fieldset.disabled = true
+        fetch('/restart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            password: password.value
+          })
+        }).then(r => {
+          const p = document.createElement('p')
+          if (r.ok) {
+            p.textContent = 'Success!'
+          } else {
+            p.textContent = 'Fake password'
+          }
+          document.body.appendChild(p)
+        })
+        e.preventDefault()
+      })
+    </script>
+  </body>
+</html>

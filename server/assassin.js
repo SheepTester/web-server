@@ -3,33 +3,15 @@ const router = express.Router()
 module.exports = router
 
 const assert = require('assert')
-const crypto = require('crypto')
-const { asyncHandler, has } = require('./utils.js')
+const { asyncHandler, has, randomID, hashPassword } = require('./utils.js')
 
 const path = require('path')
 const low = require('lowdb')
 const FileAsync = require('lowdb/adapters/FileAsync')
 
-function randomID () {
-  // I arbitrarily chose 21
-  return crypto.randomBytes(21).toString('hex')
-}
-
 function goodPassword (password) {
   return typeof password === 'string' &&
     password.length >= 8
-}
-
-function hashPassword (password, salt) {
-  return new Promise((resolve, reject) => {
-    crypto.pbkdf2(password, salt, 10000, 64, 'sha512', (err, hash) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(hash.toString('hex'))
-      }
-    })
-  })
 }
 
 Promise.all([
