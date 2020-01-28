@@ -19,22 +19,6 @@ app.get('/', (req, res) => {
   }
 })
 
-app.get('/400', (req, res) => {
-  assert(false, 'User asked for a 400 page!')
-})
-
-app.get('/500', (req, res) => {
-  throw new Error('I give up!')
-})
-
-app.get('/418', (req, res) => {
-  if (req.xhr || req.method !== 'GET') {
-    res.status(418).send({ teapot: 'I\'m' })
-  } else {
-    res.status(418).render('418')
-  }
-})
-
 const restartHash = 'f1794bff3750523268b8aa3bab403a2598f3ff96bc58c0d543b65d634b52eaeff1fc5875b1a59e09bed0a161b9747b2fe76cf40cda8e962f3be2f4044efa34ec'
 const restartSalt = 'You shall never know my password!'
 app.post('/restart', asyncHandler(async (req, res) => {
@@ -54,6 +38,8 @@ app.post('/restart', asyncHandler(async (req, res) => {
 }))
 
 app.use('/assassin', require('./assassin.js'))
+
+app.use('/errors', require('./errors.js'))
 
 app.use((req, res, next) => {
   if (req.xhr || req.method !== 'GET') {
