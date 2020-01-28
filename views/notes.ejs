@@ -91,6 +91,10 @@ save.addEventListener('click', e => {
       save.disabled = false
     })
 })
+fetch('./?t=' + Date.now()).then(r => r.ok ? r.text() : Promise.reject())
+  .then(content => {
+    save.textContent = content
+  })
     </script>
   </body>
 </html>

@@ -18,6 +18,10 @@ low(new FileAsync(path.resolve(__dirname, './db-notes.json')))
       })
     })
 
+    router.get('/:id/', (req, res) => {
+      res.send(db.get(req.params.id).value() || '')
+    })
+
     router.post('/:id/save', asyncHandler(async (req, res) => {
       assert(typeof req.body.content === 'string', 'Body is not a JSON string!')
       await db.set(req.params.id, req.body.content).write()
