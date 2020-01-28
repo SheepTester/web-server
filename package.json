@@ -5,7 +5,8 @@
   "main": "server/app.js",
   "scripts": {
     "serve": "node server/start-server.js",
-    "serve:loop": "git fetch origin master && git reset --hard origin/master && npm install && node server/app.js",
+    "serve:loop": "node server/server.js --staging",
+    "serve:update": "git fetch origin master && git reset --hard origin/master && npm install",
     "start": "node server/app.js",
     "test": "standard --verbose | snazzy"
   },
@@ -20,6 +21,7 @@
     "ejs": "^3.0.1",
     "express": "^4.17.1",
     "forever-monitor": "^2.0.0",
+    "greenlock-express": "^4.0.3",
     "lowdb": "^1.0.0"
   }
 }

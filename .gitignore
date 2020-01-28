@@ -108,3 +108,9 @@ dist
 
 # Level databases
 server/db-*
+
+# Upgrade log thing
+public/upgrade-log.txt
+
+# Greenlock config backups
+*.bak
