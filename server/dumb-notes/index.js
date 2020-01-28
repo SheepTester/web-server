@@ -14,12 +14,12 @@ low(new FileAsync(path.resolve(__dirname, './db-notes.json')))
     router.get('/:id/edit', (req, res) => {
       res.render('notes', {
         id: req.params.id,
-        content: db.get(req.params.id).value() || ''
+        content: db.get(req.params.id, '').value()
       })
     })
 
     router.get('/:id/', (req, res) => {
-      res.send(db.get(req.params.id).value() || '')
+      res.send(db.get(req.params.id, '').value())
     })
 
     router.post('/:id/save', asyncHandler(async (req, res) => {
