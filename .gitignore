@@ -107,7 +107,7 @@ dist
 .vscode-test
 
 # Level databases
-server/db-*
+db-*.json
 
 # Upgrade log thing
 public/upgrade-log.txt

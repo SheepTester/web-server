@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Edit <%= id %></title>
+    <meta name="description" content="<%= content.length > 50 ? content.slice(0, 50) + '...' : content %>"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono&display=swap" rel="stylesheet">
+    <style>
+      /* Colours from https://colorhunt.co/palette/170044 */
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        font-family: 'Ubuntu Mono', monospace;
+        margin: 0;
+        font-size: 0;
+        background-color: #f1fcfc;
+        color: #633a82;
+      }
+      :focus {
+        outline: none; /* rip */
+      }
+      #text {
+        font: inherit;
+        flex: auto;
+        box-sizing: border-box;
+        -webkit-appearance: none;
+        border: none;
+        background: none;
+        padding: 50px;
+        font-size: 16px;
+        color: inherit;
+      }
+      #save {
+        font: inherit;
+        -webkit-appearance: none;
+        border: none;
+        background: none;
+        background-color: #633a82;
+        color: #f1fcfc;
+        padding: 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all .2s;
+      }
+      #save.error {
+        background-color: #72b5b7;
+      }
+      #save:disabled {
+        opacity: 0.5;
+        cursor: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="text" autofocus><%= content %></textarea>
+    <button id="save" disabled>save</button>
+    <script>
+const text = document.getElementById('text')
+const save = document.getElementById('save')
+text.addEventListener('input', e => {
+  save.disabled = false
+})
+save.addEventListener('click', e => {
+  save.disabled = true
+  save.classList.remove('error')
+  save.textContent = 'saving'
+  fetch('./save', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ content: text.value })
+  })
+    .then(res => {
+      if (res.ok) {
+        save.textContent = 'saved'
+      } else {
+        save.classList.add('error')
+        save.textContent = 'save wucky'
+        save.disabled = false
+      }
+    })
+    .catch(() => {
+      save.classList.add('error')
+      save.textContent = 'couldnt save'
+      save.disabled = false
+    })
+})
+    </script>
+  </body>
+</html>
