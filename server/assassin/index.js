@@ -3,7 +3,7 @@ const router = express.Router()
 module.exports = router
 
 const assert = require('assert')
-const { asyncHandler, has, randomID, hashPassword } = require('./utils.js')
+const { asyncHandler, has, randomID, hashPassword } = require('../utils.js')
 
 const path = require('path')
 const low = require('lowdb')
