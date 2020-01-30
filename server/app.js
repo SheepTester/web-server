@@ -37,13 +37,13 @@ app.post('/restart', asyncHandler(async (req, res) => {
   }
 }))
 
-app.use('/assassin', require('./assassin.js'))
+app.use('/assassin', require('./assassin/index.js'))
 
-app.use('/errors', require('./errors.js'))
+app.use('/errors', require('./errors/index.js'))
 
-app.use('/note', require('./dumb-notes/index.js'))
+app.use('/note', require('./note/index.js'))
 
-app.use('/counter', require('./counter.js'))
+app.use('/counter', require('./counter/index.js'))
 
 app.use((req, res, next) => {
   if (req.xhr || req.method !== 'GET') {

@@ -1,5 +1,5 @@
 {
-  "name": "assassin",
+  "name": "web-server",
   "version": "1.0.0",
   "description": "",
   "main": "server/app.js",
@@ -10,7 +10,7 @@
     "start": "node server/app.js",
     "test": "standard --verbose | snazzy"
   },
-  "author": "Orbiit",
+  "author": "SheepTester",
   "license": "MIT",
   "devDependencies": {
     "snazzy": "^8.0.0",
