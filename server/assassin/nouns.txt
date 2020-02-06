@@ -29,7 +29,6 @@ eye
 fan
 fly
 fog
-gun
 hat
 hen
 hot
@@ -146,7 +145,6 @@ dogs
 doll
 door
 drop
-drug
 drum
 duck
 dust
@@ -349,7 +347,6 @@ wren
 yard
 yarn
 year
-yoke
 zinc
 actor
 alarm
@@ -746,7 +743,6 @@ window
 winter
 wrench
 writer
-zephyr
 zipper
 account
 airport
@@ -873,7 +869,7 @@ downtown
 exchange
 friction
 goldfish
-good-bye
+goodbye
 governor
 hospital
 increase

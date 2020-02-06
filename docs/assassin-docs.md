@@ -4,8 +4,6 @@ On the client-side, this is known as Elimination. I changed the name after makin
 
 **TODO: Notifications. Requires POST `email-notifs` Boolean, GET `notifications`, and POST `read-notifs`. Existing activities should add to notifications. Perhaps notifications should also send emails if enabled.**
 
-**TODO: Global stats**
-
 ## POST `create-user`
 
 Give it a username and some starter name, password, and email info. A bio is optional.
@@ -210,8 +208,6 @@ You can't leave while a game is running, but players can still be kicked.
 
 The kicked person's target becomes your target.
 
-**TODO: This should also reset the code.**
-
 ## POST `start?game=[GAME]`
 
 With auth, start the game. Returns an ok. Requires at least 2 players.
@@ -228,11 +224,9 @@ While a game is running, with auth, it'll give
 
 **TODO: The client needs better way to get statuses for ALL active games at once.**
 
-**TODO: Generate better codes.**
-
 ### What are kill codes?
 
-Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) used to assassinate people
+Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) (edited slightly) used to assassinate people
 
 ## POST `kill?game[GAME]`
 

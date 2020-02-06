@@ -17,16 +17,17 @@ function goodPassword (password) {
 }
 
 Promise.all([
+  require('./random-id.js'),
   low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] })),
   low(new FileAsync(path.resolve(__dirname, './db-notifications.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-global.json'), { defaultValue: {
-    eliminated: 0,
+    kills: 0,
     active: 0,
     games: 0
   } }))
-]).then(async databases => {
+]).then(async ([randomCode, ...databases]) => {
   const [
     usersDB,
     sessionsDB,
@@ -159,11 +160,12 @@ Promise.all([
       games: [],
       myGames: []
     }
+    notifications[username] = []
     await userSettings(users[username], req.body, true)
 
     const sessionID = createSession(username)
 
-    await Promise.all([usersDB.write(), sessionsDB.write()])
+    await Promise.all([usersDB.write(), sessionsDB.write(), notificationsDB.write()])
     res.send({ session: sessionID })
   }))
 
@@ -191,7 +193,6 @@ Promise.all([
   }))
 
   // Authenticated user data (for user options)
-  // TODO: Send games and myGames
   router.get('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { name, email, bio } = user
@@ -296,7 +297,7 @@ Promise.all([
     // Case insensitive
     assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
     user.games.push(gameID)
-    game.players[username] = { kills: 0, code: 'TODO' }
+    game.players[username] = { kills: 0, code: randomCode() }
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'with luck' })
   }))
@@ -324,15 +325,17 @@ Promise.all([
       // Redirect target
       game.players[targetPlayer.assassin].target = targetPlayer.target
       game.players[targetPlayer.target].assassin = targetPlayer.assassin
+      // I don't think it's necessary to regenerate the assassin's code.
       game.alive--
       if (game.alive === 1) {
+        globalStats.active--
         game.ended = true
       }
     }
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
 
-    await Promise.all([usersDB.write(), gamesDB.write()])
+    await Promise.all([usersDB.write(), gamesDB.write(), globalStats.write()])
     res.send({ ok: 'if i didnt goof' })
   }))
 
@@ -346,8 +349,9 @@ Promise.all([
     shuffleTargets(players)
     game.alive = players.length
     game.started = true
+    globalStats.active++
 
-    await gamesDB.write()
+    await Promise.all([gamesDB.write(), globalStatsDB.write()])
     res.send({ ok: 'if all goes well' })
   }))
 
@@ -380,19 +384,21 @@ Promise.all([
     const { code } = req.body
     assert(code === target.code, 'Wrong code!')
 
+    globalStats.kills++
     player.kills++
     player.target = target.target
     game.players[target.target].assassin = username
-    player.code = 'TODO' // Regenerate code
+    player.code = randomCode() // Regenerate code
 
     delete target.target
     game.alive--
 
     if (game.alive === 1) {
+      globalStats.active--
       game.ended = true
     }
 
-    await gamesDB.write()
+    await Promise.all([gamesDB.write(), globalStatsDB.write()])
     res.send({ ok: 'safely' })
   }))
 
@@ -407,4 +413,13 @@ Promise.all([
     await gamesDB.write()
     res.send({ ok: 'probably' })
   }))
+
+  router.get('/stats', (req, res) => {
+    const { kills, active } = globalStats
+    res.send({
+      kills,
+      active,
+      games: games.length
+    })
+  })
 })
