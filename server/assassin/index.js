@@ -11,15 +11,36 @@ const FileAsync = require('lowdb/adapters/FileAsync')
 
 function goodPassword (password) {
   return typeof password === 'string' &&
-    password.length >= 8
+    password.length >= 6 &&
+    password.includes(' ') &&
+    password.length <= 200
 }
 
 Promise.all([
   low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] }))
-]).then(async ([usersDB, sessionsDB, gamesDB]) => {
-  const [users, sessions, games] = [usersDB, sessionsDB, gamesDB].map(db => db.value())
+  low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] })),
+  low(new FileAsync(path.resolve(__dirname, './db-notifications.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-global.json'), { defaultValue: {
+    eliminated: 0,
+    active: 0,
+    games: 0
+  } }))
+]).then(async databases => {
+  const [
+    usersDB,
+    sessionsDB,
+    gamesDB,
+    notificationsDB,
+    globalStatsDB
+  ] = databases
+  const [
+    users,
+    sessions,
+    games,
+    notifications,
+    globalStats
+  ] = databases.map(db => db.value())
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
@@ -56,12 +77,13 @@ Promise.all([
     return { game, gameID }
   }
 
-  const usernameRegex = /^[a-z0-9_-]{3,}$/
+  const usernameRegex = /^[a-z0-9_-]{3,20}$/
 
   async function userSettings (user, { name, password, oldPassword, email, bio }, init) {
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
       assert(name.length > 0, 'Empty name!')
+      assert(name.length <= 50, 'Name too long! (Sorry if your name is actually this long; this is to prevent abuse. I hope you\'ll understand.)')
       user.name = name
     }
     if (init || password !== undefined) {
@@ -76,10 +98,12 @@ Promise.all([
     if (init || email !== undefined) {
       assert(typeof email === 'string', 'Email not string!')
       assert(email.length > 0, 'Empty email!')
+      assert(email.length <= 320, 'Email too long!')
       user.email = email
     }
     if (bio !== undefined) {
       assert(typeof bio === 'string', 'Bio not string!')
+      assert(bio.length <= 2000, 'Bio too long!')
       user.bio = bio
     }
   }
@@ -88,14 +112,17 @@ Promise.all([
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name is not string!')
       assert(name.length > 0, 'Empty name!')
+      assert(name.length <= 100, 'Name too long!')
       game.name = name
     }
     if (description) {
       assert(typeof description === 'string', 'Description is not string!')
+      assert(description.length <= 2000, 'Description too long!')
       game.description = description
     }
     if (init || password !== undefined) {
       assert(typeof password === 'string', 'Password is not string!')
+      assert(password.length <= 200, 'Password too long!')
       game.password = password
     }
   }
