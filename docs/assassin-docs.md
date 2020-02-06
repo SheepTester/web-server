@@ -4,6 +4,8 @@ On the client-side, this is known as Elimination. I changed the name after makin
 
 **TODO: Notifications. Requires POST `email-notifs` Boolean, GET `notifications`, and POST `read-notifs`. Existing activities should add to notifications. Perhaps notifications should also send emails if enabled.**
 
+**TODO: Password reset?**
+
 ## POST `create-user`
 
 Give it a username and some starter name, password, and email info. A bio is optional.
@@ -110,12 +112,10 @@ Returns
 {
   name : String,
   bio : String,
-  myGames : Array<{ game : String, name : String, started : Boolean, ended : Boolean }>}
-  games : Array<{ game : String, name : String, started : Boolean, ended : Boolean, kills : Number }>
+  myGames : Array<{ game : String, name : String, started : Boolean, ended : Boolean, players : Number }>,
+  games : Array<{ game : String, name : String, started : Boolean, ended : Boolean, players : Number, kills : Number, alive : Boolean }>
 }
 ```
-
-**TODO: Designs currently also want the number of participants and whether the person is alive or dead.**
 
 ## POST `create-game`
 
@@ -156,15 +156,15 @@ GET returns
   name : String,
   description : String,
   password : String,
-  players : Array<{ username : String, name : String, alive : Boolean, kills : Number}>,
+  players : Array<{ username : String, name : String, alive : Boolean, kills : Number, joined : Number }>,
   started : Boolean,
   ended : Boolean
 }
 ```
 
-Requires auth.
+`joined` is what `Date.now()` returns representing when the player joined.
 
-**TODO: Designs currently want the join time.**
+Requires auth.
 
 ## GET `game?game=[GAME]`
 
@@ -201,8 +201,6 @@ You can give nothing but auth to leave yourself, or give a target
 Returns an ok.
 
 You can't leave while a game is running, but players can still be kicked.
-
-**TODO: Kick reason**
 
 ### What happens if my target is kicked?
 
@@ -242,14 +240,43 @@ The `code` is the target's kill code.
 
 With an ongoing game and auth, it'll do shufflances and ok.
 
-**TODO: This ought to return the new player list.**
-
 ## GET `stats`
 
 Returns some global stats:
 
 ```ts
-{ kills : Number, active : Number, games: Number }
+{ kills : Number, active : Number, games : Number }
 ```
 
 `games` is the total number of games, and `active` is the number of games running.
+
+## GET `/notifications?from=[0]&limit=[10]`
+
+You need auth. Will return
+
+```ts
+{
+  notifications : Array<{ type : String, time : Number, read : Boolean, ... }>,
+  end : Boolean
+}
+```
+
+`time` is whatever `Date.now()` returns. `read` is whether the notification has been marked read. `end` is whether there aren't any more notifications to go.
+
+`limit` is the number of notifications to return per call. Maximum 40.
+
+### What notifications?
+
+If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name).
+
+`game-started`: Announces when a game has been started to all players.
+
+`killed`: When `by` (the killer's username) whose name is `name` (killer's display name) has killed you.
+
+`game-ended`: Announces when the game has ended to all players. Has `winner` and `winnerName` which are the remaining alive person's username and display name, respectively.
+
+`kicked`: When the game creator kicks a player. The `reason` is a string that can be empty. This can be sent before or during a game.
+
+## POST `/read`
+
+With auth. Marks all new notifications as read. Returns ok.

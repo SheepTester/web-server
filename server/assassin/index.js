@@ -18,6 +18,10 @@ function goodPassword (password) {
 
 Promise.all([
   require('./random-id.js'),
+  // vN is for when I want to invalidate the current database format during
+  // development and restart the existing data. This method should NOT be used
+  // during production lol.
+  // TODO: Add -v2 to all of these to reset (I am too lazy to deal with the server laptop directly lol). I didn't tonight because I don't have time to test... and I don't want to accidentally restart while this thing is broken.
   low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] })),
@@ -146,19 +150,43 @@ Promise.all([
     }
   }
 
+  function oneDied (gameID, game) {
+    game.alive--
+    if (game.alive === 1) {
+      globalStats.active--
+      game.ended = true
+      const [winner] = Object.entries(game.players).find(player => player.target)
+      const winnerName = users[winner].name
+      for (const player of Object.keys(game.players)) {
+        notifications[player].push({
+          type: 'game-ended',
+          game: gameID,
+          gameName: game.name,
+          winner,
+          winnerName,
+          time: Date.now(),
+          read: false
+        })
+      }
+    }
+  }
+
   // People can spam-create users
   router.post('/create-user', asyncHandler(async (req, res) => {
     const { username } = req.body
     assert(typeof username === 'string', 'Username not a string!')
     assert(usernameRegex.test(username), 'Boring username!')
-    assert(!has(users, username), 'Username taken!')
+    // Using traditional property get here so that things like "__proto__"
+    // automatically exist and won't goof up everything.
+    assert(!users[username], 'Username taken!')
 
     const salt = randomID()
     users[username] = {
       salt,
       bio: '',
       games: [],
-      myGames: []
+      myGames: [],
+      emailNotifs: false
     }
     notifications[username] = []
     await userSettings(users[username], req.body, true)
@@ -211,14 +239,17 @@ Promise.all([
         game,
         name: games[game].name,
         started: games[game].started,
-        ended: games[game].ended
+        ended: games[game].ended,
+        players: games[game].players.length
       })),
       games: games.map(game => ({
         game,
         name: games[game].name,
         started: games[game].started,
         ended: games[game].ended,
-        kills: games[game].players[username].kills
+        players: games[game].players.length,
+        kills: games[game].players[username].kills,
+        alive: !!games[game].players[username].target
       }))
     })
   })
@@ -260,11 +291,12 @@ Promise.all([
       password,
       // Should targets and kill codes be available to the game creator?
       players: Object.entries(players)
-        .map(([username, { target, kills }]) => ({
+        .map(([username, { target, kills, joined }]) => ({
           username,
           name: users[username].name,
           alive: !!target,
-          kills
+          kills,
+          joined
         })),
       started,
       ended
@@ -297,7 +329,7 @@ Promise.all([
     // Case insensitive
     assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
     user.games.push(gameID)
-    game.players[username] = { kills: 0, code: randomCode() }
+    game.players[username] = { kills: 0, code: randomCode(), joined: Date.now() }
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'with luck' })
   }))
@@ -305,7 +337,7 @@ Promise.all([
   router.post('/leave', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGame(req)
-    const { user: target } = req.body
+    const { user: target, reason = '' } = req.body
     let targetUsername = username
     let targetUser = user
     if (target) {
@@ -315,6 +347,14 @@ Promise.all([
       assert(has(users, target), 'Target doesn\'t exist!')
       targetUsername = target
       targetUser = users[target]
+      notifications[targetUsername].push({
+        type: 'kicked',
+        game: gameID,
+        gameName: game.name,
+        reason,
+        time: Date.now(),
+        read: false
+      })
     } else {
       assert(!game.started, 'Game already started!')
     }
@@ -326,22 +366,18 @@ Promise.all([
       game.players[targetPlayer.assassin].target = targetPlayer.target
       game.players[targetPlayer.target].assassin = targetPlayer.assassin
       // I don't think it's necessary to regenerate the assassin's code.
-      game.alive--
-      if (game.alive === 1) {
-        globalStats.active--
-        game.ended = true
-      }
+      oneDied(gameID, game)
     }
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
 
-    await Promise.all([usersDB.write(), gamesDB.write(), globalStats.write()])
+    await Promise.all([usersDB.write(), gamesDB.write(), globalStats.write(), notificationsDB.write()])
     res.send({ ok: 'if i didnt goof' })
   }))
 
   router.post('/start', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req, user)
+    const { game, gameID } = getGame(req, user)
     assert(!game.started, 'Game already started!')
 
     const players = Object.entries(game.players)
@@ -350,8 +386,17 @@ Promise.all([
     game.alive = players.length
     game.started = true
     globalStats.active++
+    for (const player of Object.keys(game.players)) {
+      notifications[player].push({
+        type: 'game-started',
+        game: gameID,
+        gameName: game.name,
+        time: Date.now(),
+        read: false
+      })
+    }
 
-    await Promise.all([gamesDB.write(), globalStatsDB.write()])
+    await Promise.all([gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'if all goes well' })
   }))
 
@@ -372,7 +417,7 @@ Promise.all([
 
   router.post('/kill', asyncHandler(async (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req)
+    const { game, gameID } = getGame(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
@@ -384,6 +429,16 @@ Promise.all([
     const { code } = req.body
     assert(code === target.code, 'Wrong code!')
 
+    notifications[player.target].push({
+      type: 'killed',
+      game: gameID,
+      gameName: game.name,
+      by: username,
+      name: users[username].name,
+      time: Date.now(),
+      read: false
+    })
+
     globalStats.kills++
     player.kills++
     player.target = target.target
@@ -391,14 +446,9 @@ Promise.all([
     player.code = randomCode() // Regenerate code
 
     delete target.target
-    game.alive--
+    oneDied(gameID, game)
 
-    if (game.alive === 1) {
-      globalStats.active--
-      game.ended = true
-    }
-
-    await Promise.all([gamesDB.write(), globalStatsDB.write()])
+    await Promise.all([gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'safely' })
   }))
 
@@ -422,4 +472,29 @@ Promise.all([
       games: games.length
     })
   })
+
+  router.get('/notifications', (req, res) => {
+    const { username } = verifySession(req.get('X-Session-ID'))
+    let { from = 0, limit = 10 } = req.query
+    from = +from
+    limit = +limit
+    assert(!Number.isNaN(from), 'Invalid `from`!')
+    assert(!Number.isNaN(limit), 'Invalid `limit`!')
+    assert(from >= 0, '`from` needs to be >= 0')
+    assert(limit > 0 && limit <= 40, '`limit` needs to be (0, 40]')
+    const notifs = notifications[username]
+    return {
+      notifications: notifs.slice(from, from + limit),
+      end: notifs.length <= from + limit
+    }
+  })
+
+  router.post('/read', asyncHandler(async (req, res) => {
+    const { username } = verifySession(req.get('X-Session-ID'))
+    const notifs = notifications[username]
+    for (let i = 0; i < notifs.length && !notifs[i].read; i++) {
+      notifs[i].read = true
+    }
+    res.send({ ok: 'perhaps' })
+  }))
 })
