@@ -193,14 +193,14 @@ Promise.all([
   }))
 
   // Authenticated user data (for user options)
-  router.get('/user-settings', asyncHandler(async (req, res) => {
+  router.get('/user-settings', (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { name, email, bio } = user
     res.send({ name, email, bio })
-  }))
+  })
 
   // Public user data (for profiles)
-  router.get('/user', asyncHandler(async (req, res) => {
+  router.get('/user', (req, res) => {
     const { user: username } = req.query
     assert(has(users, username), 'User doesn\'t exist!')
     const { name, bio, myGames, games } = users[username]
@@ -221,7 +221,7 @@ Promise.all([
         kills: games[game].players[username].kills
       }))
     })
-  }))
+  })
 
   router.post('/create-game', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
@@ -250,7 +250,7 @@ Promise.all([
     res.send({ ok: 'with luck' })
   }))
 
-  router.get('/game-settings', asyncHandler(async (req, res) => {
+  router.get('/game-settings', (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req, user)
     const { name, description, password, players, started, ended } = game
@@ -269,9 +269,9 @@ Promise.all([
       started,
       ended
     })
-  }))
+  })
 
-  router.get('/game', asyncHandler(async (req, res) => {
+  router.get('/game', (req, res) => {
     const { game } = getGame(req)
     const { name, description, players, started, ended } = game
     res.send({
@@ -287,7 +287,7 @@ Promise.all([
       started,
       ended
     })
-  }))
+  })
 
   router.post('/join', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
@@ -355,7 +355,7 @@ Promise.all([
     res.send({ ok: 'if all goes well' })
   }))
 
-  router.get('/status', asyncHandler(async (req, res) => {
+  router.get('/status', (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGame(req)
     assert(game.started, 'Game hasn\'t started!')
@@ -368,7 +368,7 @@ Promise.all([
       targetName: users[target].name,
       code
     })
-  }))
+  })
 
   router.post('/kill', asyncHandler(async (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))

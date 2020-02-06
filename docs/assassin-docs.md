@@ -243,3 +243,13 @@ The `code` is the target's kill code.
 With an ongoing game and auth, it'll do shufflances and ok.
 
 **TODO: This ought to return the new player list.**
+
+## GET `stats`
+
+Returns some global stats:
+
+```ts
+{ kills : Number, active : Number, games: Number }
+```
+
+`games` is the total number of games, and `active` is the number of games running.
