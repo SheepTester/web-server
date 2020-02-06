@@ -228,6 +228,12 @@ While a game is running, with auth, it'll give
 
 **TODO: The client needs better way to get statuses for ALL active games at once.**
 
+**TODO: Generate better codes.**
+
+### What are kill codes?
+
+Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) used to assassinate people
+
 ## POST `kill?game[GAME]`
 
 With auth, you also need to give:
