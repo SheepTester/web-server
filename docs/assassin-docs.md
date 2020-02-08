@@ -162,6 +162,18 @@ GET returns
 
 Requires auth.
 
+### What makes a good name?
+
+A nonempty, at most 100 char name is good.
+
+### What makes a good password?
+
+It can't be over 200 characters, but it can be empty.
+
+### What makes a good description?
+
+It can't be over 2k chars, but it can be empty.
+
 ## GET `game?game=[GAME]`
 
 ```ts
