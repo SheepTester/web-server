@@ -27,8 +27,7 @@ Promise.all([
   low(new FileAsync(path.resolve(__dirname, './db-notifications-v2.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), { defaultValue: {
     kills: 0,
-    active: 0,
-    games: 0
+    active: 0
   } }))
 ]).then(async ([randomCode, ...databases]) => {
   const [
@@ -119,12 +118,12 @@ Promise.all([
       assert(name.length <= 100, 'Name too long!')
       game.name = name
     }
-    if (description) {
+    if (description !== undefined) {
       assert(typeof description === 'string', 'Description is not string!')
       assert(description.length <= 2000, 'Description too long!')
       game.description = description
     }
-    if (init || password !== undefined) {
+    if (password !== undefined) {
       assert(typeof password === 'string', 'Password is not string!')
       assert(password.length <= 200, 'Password too long!')
       game.password = password
@@ -230,7 +229,7 @@ Promise.all([
   router.get('/user', (req, res) => {
     const { user: username } = req.query
     assert(has(users, username), 'User doesn\'t exist!')
-    const { name, bio, myGames, games } = users[username]
+    const { name, bio, myGames, games: joinedGames } = users[username]
     res.send({
       name,
       bio,
@@ -239,14 +238,14 @@ Promise.all([
         name: games[game].name,
         started: games[game].started,
         ended: games[game].ended,
-        players: games[game].players.length
+        players: Object.keys(games[game].players).length
       })),
-      games: games.map(game => ({
+      games: joinedGames.map(game => ({
         game,
         name: games[game].name,
         started: games[game].started,
         ended: games[game].ended,
-        players: games[game].players.length,
+        players: Object.keys(games[game].players).length,
         kills: games[game].players[username].kills,
         alive: !!games[game].players[username].target
       }))
@@ -257,6 +256,7 @@ Promise.all([
     const { user } = verifySession(req.get('X-Session-ID'))
 
     const game = {
+      password: '',
       description: '',
       players: {},
       started: false,
