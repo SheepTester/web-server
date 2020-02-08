@@ -2,10 +2,6 @@
 
 On the client-side, this is known as Elimination. I changed the name after making the backend. Oops!
 
-**TODO: Notifications. Requires POST `email-notifs` Boolean, GET `notifications`, and POST `read-notifs`. Existing activities should add to notifications. Perhaps notifications should also send emails if enabled.**
-
-**TODO: Password reset?**
-
 ## POST `create-user`
 
 Give it a username and some starter name, password, and email info. A bio is optional.
@@ -218,13 +214,19 @@ While a game is running, with auth, it'll give
 { target : String, targetName : String, code : String }
 ```
 
-`target` is a username. `targetName` is their display name. `code` is used for killing (see below).
-
-**TODO: The client needs better way to get statuses for ALL active games at once.**
+`target` is a username. `targetName` is their display name. `code` is used for killing (see `kill`).
 
 ### What are kill codes?
 
 Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) (edited slightly) used to assassinate people
+
+## GET `statuses`
+
+Gets statuses for all sections (see `status`). With auth,
+
+```ts
+Array<{ target : String, targetName : String, code : String }>
+```
 
 ## POST `kill?game[GAME]`
 
@@ -267,7 +269,7 @@ You need auth. Will return
 
 ### What notifications?
 
-If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name).
+If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name). The following are values for the `type` property:
 
 `game-started`: Announces when a game has been started to all players.
 
@@ -280,3 +282,11 @@ If the notification relates to a game, there are properties `game` (the ID, for 
 ## POST `/read`
 
 With auth. Marks all new notifications as read. Returns ok.
+
+## TODO: Figure out how to send emails with Node
+
+With this, I could add:
+
+- Password reset forms
+
+- Email notifications. Requires POST `email-notifs` boolean to keep track of whether they should be sent.

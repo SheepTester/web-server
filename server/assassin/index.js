@@ -21,12 +21,11 @@ Promise.all([
   // vN is for when I want to invalidate the current database format during
   // development and restart the existing data. This method should NOT be used
   // during production lol.
-  // TODO: Add -v2 to all of these to reset (I am too lazy to deal with the server laptop directly lol). I didn't tonight because I don't have time to test... and I don't want to accidentally restart while this thing is broken.
-  low(new FileAsync(path.resolve(__dirname, './db-users.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-sessions.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-games.json'), { defaultValue: [] })),
-  low(new FileAsync(path.resolve(__dirname, './db-notifications.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-global.json'), { defaultValue: {
+  low(new FileAsync(path.resolve(__dirname, './db-users-v2.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-sessions-v2.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-games-v2.json'), { defaultValue: [] })),
+  low(new FileAsync(path.resolve(__dirname, './db-notifications-v2.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), { defaultValue: {
     kills: 0,
     active: 0,
     games: 0
@@ -56,16 +55,16 @@ Promise.all([
 
   function verifySession (sessionID) {
     const session = sessions[sessionID]
-    assert(has(sessions, sessionID), 'Session doesn\'t exist!')
+    assert(has(sessions, sessionID), '(Invalid session) Session doesn\'t exist!')
     if (Date.now() > session.end) {
       delete sessions[sessionID]
       // Don't write to database because:
       // 1. It's not really that important here
       // 2. This function doesn't return a promise so nothing can then/catch on it.
       // Something else'll save it later.
-      throw new Error('Session expired!')
+      throw new Error('(Invalid session) Session expired!')
     }
-    assert(has(users, session.user), 'Nonexistent user...?')
+    assert(has(users, session.user), '(Invalid session) Nonexistent user...?')
     return {
       user: users[session.user],
       username: session.user
@@ -413,6 +412,22 @@ Promise.all([
       targetName: users[target].name,
       code
     })
+  })
+
+  router.get('/statuses', (req, res) => {
+    const { username } = verifySession(req.get('X-Session-ID'))
+    const statuses = []
+    for (const game of users[username].games) {
+      if (game.started && !game.ended && has(game.players, username)) {
+        const { target, code } = game.players[username]
+        statuses.push({
+          target,
+          targetName: users[target].name,
+          code
+        })
+      }
+    }
+    res.send(statuses)
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
