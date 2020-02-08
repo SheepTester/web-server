@@ -247,7 +247,7 @@ Promise.all([
         ended: games[game].ended,
         players: Object.keys(games[game].players).length,
         kills: games[game].players[username].kills,
-        alive: !!games[game].players[username].target
+        alive: !games[game].started || !!games[game].players[username].target
       }))
     })
   })
@@ -294,7 +294,7 @@ Promise.all([
         .map(([username, { target, kills, joined }]) => ({
           username,
           name: users[username].name,
-          alive: !!target,
+          alive: !started || !!target,
           kills,
           joined
         })),
@@ -315,7 +315,7 @@ Promise.all([
         .map(([username, { target, kills }]) => ({
           username,
           name: users[username].name,
-          alive: !!target,
+          alive: !started || !!target,
           kills
         })),
       started,
@@ -373,7 +373,7 @@ Promise.all([
     targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
     delete game.players[targetUsername]
 
-    await Promise.all([usersDB.write(), gamesDB.write(), globalStats.write(), notificationsDB.write()])
+    await Promise.all([usersDB.write(), gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'if i didnt goof' })
   }))
 
