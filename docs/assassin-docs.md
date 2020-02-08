@@ -202,10 +202,10 @@ Okays given with auth
 
 Used for both kicking and leaving on one's own.
 
-You can give nothing but auth to leave yourself, or give a target
+You can give nothing but auth to leave yourself, or give a target (and optional reason)
 
 ```ts
-{ user : String }
+{ user : String, reason : String }
 ```
 
 Returns an ok.
