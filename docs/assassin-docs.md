@@ -178,6 +178,8 @@ It can't be over 2k chars, but it can be empty.
 
 ```ts
 {
+  creator : String,
+  creatorName : String,
   name : String,
   description : String,
   players : Array<{ username : String, name : String, alive : Boolean, kills : Number}>,

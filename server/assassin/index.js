@@ -253,9 +253,10 @@ Promise.all([
   })
 
   router.post('/create-game', asyncHandler(async (req, res) => {
-    const { user } = verifySession(req.get('X-Session-ID'))
+    const { user, username } = verifySession(req.get('X-Session-ID'))
 
     const game = {
+      creator: username,
       password: '',
       description: '',
       players: {},
@@ -304,8 +305,10 @@ Promise.all([
 
   router.get('/game', (req, res) => {
     const { game } = getGame(req)
-    const { name, description, players, started, ended } = game
+    const { creator, name, description, players, started, ended } = game
     res.send({
+      creator,
+      creatorName: users[creator].name,
       name,
       description,
       players: Object.entries(players)
