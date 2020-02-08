@@ -205,7 +205,7 @@ Used for both kicking and leaving on one's own.
 You can give nothing but auth to leave yourself, or give a target
 
 ```ts
-{ target : String }
+{ user : String }
 ```
 
 Returns an ok.
