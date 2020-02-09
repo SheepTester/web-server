@@ -225,10 +225,12 @@ With auth, start the game. Returns an ok. Requires at least 2 players.
 While a game is running, with auth, it'll give
 
 ```ts
-{ target : String, targetName : String, code : String }
+{ target : String, targetName : String, code : String, game : String, gameName : String }
 ```
 
 `target` is a username. `targetName` is their display name. `code` is used for killing (see `kill`).
+
+(It returns `game` again a bit redundantly, but this is to retain symmetry with `statuses`)
 
 ### What are kill codes?
 
@@ -239,7 +241,7 @@ Kill codes are four random nouns from [this list](https://gist.github.com/foglem
 Gets statuses for all sections (see `status`). With auth,
 
 ```ts
-Array<{ target : String, targetName : String, code : String }>
+Array<{ target : String, targetName : String, code : String, game : String, gameName : String }>
 ```
 
 ## POST `kill?game[GAME]`
@@ -295,6 +297,8 @@ If the notification relates to a game, there are properties `game` (the ID, for 
 `game-ended`: Announces when the game has ended to all players. Has `winner` and `winnerName` which are the remaining alive person's username and display name, respectively.
 
 `kicked`: When the game creator kicks a player. The `reason` is a string that can be empty. This can be sent before or during a game.
+
+`shuffle`: When the targets get shuffled.
 
 ## POST `/read`
 

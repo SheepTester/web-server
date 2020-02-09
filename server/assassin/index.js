@@ -404,13 +404,15 @@ Promise.all([
 
   router.get('/status', (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req)
+    const { gameID, game } = getGame(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
 
     const { target, code } = game.players[username]
     res.send({
+      game: gameID,
+      gameName: game.name,
       target,
       targetName: users[target].name,
       code
@@ -420,10 +422,13 @@ Promise.all([
   router.get('/statuses', (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
     const statuses = []
-    for (const game of users[username].games) {
+    for (const gameID of users[username].games) {
+      const game = games[gameID]
       if (game.started && !game.ended && has(game.players, username)) {
         const { target, code } = game.players[username]
         statuses.push({
+          game: gameID,
+          gameName: game.name,
           target,
           targetName: users[target].name,
           code
@@ -478,7 +483,17 @@ Promise.all([
 
     shuffleTargets(Object.entries(game.players).filter(player => player.target))
 
-    await gamesDB.write()
+    for (const player of Object.keys(game.players)) {
+      notifications[player].splice(0, 0, {
+        type: 'shuffle',
+        game: gameID,
+        gameName: game.name,
+        time: Date.now(),
+        read: false
+      })
+    }
+
+    await [gamesDB.write(), notificationsDB.write()]
     res.send({ ok: 'probably' })
   }))
 
@@ -518,6 +533,7 @@ Promise.all([
     for (let i = 0; i < notifs.length && !notifs[i].read; i++) {
       notifs[i].read = true
     }
+    await notificationsDB.write()
     res.send({ ok: 'perhaps' })
   }))
 })
