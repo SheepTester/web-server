@@ -25,10 +25,12 @@ Promise.all([
   low(new FileAsync(path.resolve(__dirname, './db-sessions-v2.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-games-v2.json'), { defaultValue: [] })),
   low(new FileAsync(path.resolve(__dirname, './db-notifications-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), { defaultValue: {
-    kills: 0,
-    active: 0
-  } }))
+  low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), {
+    defaultValue: {
+      kills: 0,
+      active: 0
+    }
+  }))
 ]).then(async ([randomCode, ...databases]) => {
   const [
     usersDB,
@@ -477,7 +479,7 @@ Promise.all([
 
   router.post('/shuffle', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req, user)
+    const { game, gameID } = getGame(req, user)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
 
