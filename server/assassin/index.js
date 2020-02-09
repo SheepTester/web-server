@@ -155,7 +155,7 @@ Promise.all([
     if (game.alive === 1) {
       globalStats.active--
       game.ended = true
-      const [winner] = Object.entries(game.players).find(player => player.target)
+      const winner = Object.keys(game.players).find(player => game.players[player].target)
       const winnerName = users[winner].name
       for (const player of Object.keys(game.players)) {
         notifications[player].splice(0, 0, {
@@ -483,7 +483,7 @@ Promise.all([
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
 
-    shuffleTargets(Object.entries(game.players).filter(player => player.target))
+    shuffleTargets(Object.entries(game.players).filter(player => player[1].target))
 
     for (const player of Object.keys(game.players)) {
       notifications[player].splice(0, 0, {
