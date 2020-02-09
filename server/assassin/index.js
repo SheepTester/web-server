@@ -156,7 +156,7 @@ Promise.all([
       const [winner] = Object.entries(game.players).find(player => player.target)
       const winnerName = users[winner].name
       for (const player of Object.keys(game.players)) {
-        notifications[player].push({
+        notifications[player].splice(0, 0, {
           type: 'game-ended',
           game: gameID,
           gameName: game.name,
@@ -349,7 +349,7 @@ Promise.all([
       assert(has(users, target), 'Target doesn\'t exist!')
       targetUsername = target
       targetUser = users[target]
-      notifications[targetUsername].push({
+      notifications[targetUsername].splice(0, 0, {
         type: 'kicked',
         game: gameID,
         gameName: game.name,
@@ -389,7 +389,7 @@ Promise.all([
     game.started = true
     globalStats.active++
     for (const player of Object.keys(game.players)) {
-      notifications[player].push({
+      notifications[player].splice(0, 0, {
         type: 'game-started',
         game: gameID,
         gameName: game.name,
@@ -447,7 +447,7 @@ Promise.all([
     const { code } = req.body
     assert(code === target.code, 'Wrong code!')
 
-    notifications[player.target].push({
+    notifications[player.target].splice(0, 0, {
       type: 'killed',
       game: gameID,
       gameName: game.name,
