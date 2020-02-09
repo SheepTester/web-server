@@ -273,11 +273,12 @@ You need auth. Will return
 ```ts
 {
   notifications : Array<{ type : String, time : Number, read : Boolean, ... }>,
-  end : Boolean
+  end : Boolean,
+  unread: Number
 }
 ```
 
-`time` is whatever `Date.now()` returns. `read` is whether the notification has been marked read. `end` is whether there aren't any more notifications to go.
+`time` is whatever `Date.now()` returns. `read` is whether the notification has been marked read. `end` is whether there aren't any more notifications to go. `unread` is the number of unread notifications.
 
 `limit` is the number of notifications to return per call. Maximum 40.
 

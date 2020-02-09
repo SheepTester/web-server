@@ -501,9 +501,14 @@ Promise.all([
     assert(from >= 0, '`from` needs to be >= 0')
     assert(limit > 0 && limit <= 40, '`limit` needs to be (0, 40]')
     const notifs = notifications[username]
+    let unread = 0
+    for (let i = 0; i < notifs.length && !notifs[i].read; i++) {
+      unread++
+    }
     res.send({
       notifications: notifs.slice(from, from + limit),
-      end: notifs.length <= from + limit
+      end: notifs.length <= from + limit,
+      unread
     })
   })
 
