@@ -282,6 +282,8 @@ You need auth. Will return
 
 `limit` is the number of notifications to return per call. Maximum 40.
 
+This is in reverse chronological order! (newest first)
+
 ### What notifications?
 
 If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name). The following are values for the `type` property:
