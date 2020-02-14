@@ -21,11 +21,11 @@ Promise.all([
   // vN is for when I want to invalidate the current database format during
   // development and restart the existing data. This method should NOT be used
   // during production lol.
-  low(new FileAsync(path.resolve(__dirname, './db-users-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-sessions-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-games-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-notifications-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), {
+  low(new FileAsync(path.resolve(__dirname, './db-users-v4.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-sessions-v4.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-games-v4.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-notifications-v4.json'))),
+  low(new FileAsync(path.resolve(__dirname, './db-global-v4.json'), {
     defaultValue: {
       kills: 0,
       active: 0
@@ -89,6 +89,7 @@ Promise.all([
   const usernameRegex = /^[a-z0-9_-]{3,20}$/
 
   async function userSettings (user, { name, password, oldPassword, email, bio }, init) {
+    user.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
       assert(name.length > 0, 'Empty name!')
@@ -118,6 +119,7 @@ Promise.all([
   }
 
   function gameSettings (game, { name, description, password }, init) {
+    game.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name is not string!')
       assert(name.length > 0, 'Empty name!')
@@ -158,7 +160,7 @@ Promise.all([
     game.alive--
     if (game.alive === 1) {
       globalStats.active--
-      game.ended = true
+      game.ended = Date.now()
       const winner = Object.keys(game.players).find(player => game.players[player].target)
       const winnerName = users[winner].name
       game.winner = winner
@@ -243,18 +245,27 @@ Promise.all([
       myGames: myGames.map(game => ({
         game,
         name: games[game].name,
-        started: games[game].started,
-        ended: games[game].ended,
+        state: games[game].started ? (games[game].ended ? 'ended' : 'started') : 'starting',
+        time: games[game].started ? games[game].ended || games[game].started : games[game].created,
         players: Object.keys(games[game].players).length
       })),
       games: joinedGames.map(game => ({
         game,
         name: games[game].name,
-        started: games[game].started,
-        ended: games[game].ended,
+        state: games[game].started ? (games[game].ended ? 'ended' : 'started') : 'starting',
         players: Object.keys(games[game].players).length,
         kills: games[game].players[username].kills,
-        alive: !games[game].started || !!games[game].players[username].target
+        alive: !games[game].players[username].killed,
+        // `updated` is kind of like the last updated time for a game in the
+        // context of this user. Before a game starts, it gives the creation
+        // time. After the game starts, it gives the player's death. If the
+        // player hasn't died yet, it'll give the end time of the game, but
+        // if the game hasn't ended yet, then it'll give the start time.
+        updated: games[game].started
+          ? (games[game].players[username].killed ||
+            games[game].ended ||
+            games[game].started)
+          : games[game].created
       }))
     })
   })
@@ -265,14 +276,15 @@ Promise.all([
     let gameID
     do {
       gameID = Math.floor(Math.random() * 0x100000).toString(16).padStart(5, '0')
-    } while (!games[gameID])
+    } while (games[gameID])
     const game = {
       creator: username,
       password: '',
       description: '',
       players: {},
       started: false,
-      ended: false
+      ended: false,
+      created: Date.now()
     }
     gameSettings(game, req.body, true)
     games[gameID] = game
@@ -300,35 +312,37 @@ Promise.all([
       password,
       // Should targets and kill codes be available to the game creator?
       players: Object.entries(players)
-        .map(([username, { target, kills, joined }]) => ({
+        .map(([username, { kills, joined, killed }]) => ({
           username,
           name: users[username].name,
-          alive: !started || !!target,
+          alive: !killed,
           kills,
           joined
         })),
-      started,
-      ended
+      state: started ? (ended ? 'ended' : 'started') : 'starting'
     })
   })
 
   router.get('/game', (req, res) => {
     const { game } = getGame(req)
-    const { creator, name, description, players, started, ended } = game
+    const { creator, name, description, players, started, ended, created } = game
     res.send({
       creator,
       creatorName: users[creator].name,
       name,
       description,
       players: Object.entries(players)
-        .map(([username, { target, kills }]) => ({
+        .map(([username, { kills, killed, assassin }]) => ({
           username,
           name: users[username].name,
-          alive: !started || !!target,
+          alive: !killed,
+          killTime: killed || null,
+          killer: killed ? assassin : null,
+          killerName: killed ? users[assassin].name : null,
           kills
         })),
-      started,
-      ended
+      state: started ? (ended ? 'ended' : 'started') : 'starting',
+      time: started ? ended || started : created
     })
   })
 
@@ -395,7 +409,7 @@ Promise.all([
     assert(players.length >= 2, 'Not enough players!')
     shuffleTargets(players)
     game.alive = players.length
-    game.started = true
+    game.started = Date.now()
     globalStats.active++
     for (const player of Object.keys(game.players)) {
       notifications[player].splice(0, 0, {
@@ -478,6 +492,7 @@ Promise.all([
     player.code = randomCode() // Regenerate code
 
     delete target.target
+    target.killed = Date.now()
     oneDied(gameID, game)
 
     await Promise.all([gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
@@ -511,7 +526,7 @@ Promise.all([
     res.send({
       kills,
       active,
-      games: games.length
+      games: Object.keys(games).length
     })
   })
 

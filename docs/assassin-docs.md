@@ -108,10 +108,42 @@ Returns
 {
   name : String,
   bio : String,
-  myGames : Array<{ game : String, name : String, started : Boolean, ended : Boolean, players : Number }>,
-  games : Array<{ game : String, name : String, started : Boolean, ended : Boolean, players : Number, kills : Number, alive : Boolean }>
+  myGames : Array<{
+    game : String,
+    name : String,
+    state : State,
+    time : Date,
+    players : Number
+  }>,
+  games : Array<{
+    game : String,
+    name : String,
+    state : State,
+    players : Number,
+    kills : Number,
+    alive : Boolean,
+    updated : Date
+  }>
 }
 ```
+
+`time` is either the game end time, game start time, or game creation time; it'll take the latest one. It should coincide with the game state. Whenever `time` appears with `state`, it'll represent this.
+
+`updated` is rather complex. I intend on using it for sorting a user's games by "last updated," which is a pretty ambiguous criteria. Here's my description of it.
+
+```js
+// `updated` is kind of like the last updated time for a game in the
+// context of this user. Before a game starts, it gives the creation
+// time. After the game starts, it gives the player's death. If the
+// player hasn't died yet, it'll give the end time of the game, but
+// if the game hasn't ended yet, then it'll give the start time.
+```
+
+### What's a `State`? And a `Date`?
+
+`Date` is a date and time in milliseconds since whatever epoch JavaScript Dates use.
+
+`State` is a string that is either `ended`, `started`, or `starting` (before the game has started).
 
 ## POST `create-game`
 
@@ -126,14 +158,12 @@ Requires authentication. Takes
 Returns
 
 ```ts
-{ game : String }
+{ game : GameID }
 ```
 
-`game` is a game ID.
+### What's a `GameID`?
 
-### What's a game ID?
-
-Game IDs used to be incremental. Now, they're five digit hexadecimal sequences, like `e1e10`. They're always strings.
+`GameID` is a string used to identify a game. Game IDs used to be incremental. Now, they're five digit hexadecimal sequences, like `e1e10`. They're always strings.
 
 ### What's a good game name?
 
@@ -164,15 +194,24 @@ GET returns
   name : String,
   description : String,
   password : String,
-  players : Array<{ username : String, name : String, alive : Boolean, kills : Number, joined : Number }>,
-  started : Boolean,
-  ended : Boolean
+  players : Array<{
+    username : String,
+    name : String,
+    alive : Boolean,
+    kills : Number,
+    joined : Date
+  }>,
+  state: State
 }
 ```
 
-`joined` is what `Date.now()` returns representing when the player joined.
+`joined` is what `Date.now()` returns representing when the player joined. `kills` is an integer representing the number of eliminations this user has performed.
 
 Requires auth.
+
+### What's the `?game=[GAME]` part?
+
+It's a URL query thing. `[GAME]` is the game ID.
 
 ### What makes a good name?
 
@@ -194,9 +233,17 @@ It can't be over 2k chars, but it can be empty.
   creatorName : String,
   name : String,
   description : String,
-  players : Array<{ username : String, name : String, alive : Boolean, kills : Number}>,
-  started : Boolean,
-  ended : Boolean
+  players : Array<{
+    username : String,
+    name : String,
+    alive : Boolean,
+    killTime : Date | null,
+    killer : String | null,
+    killerName : String | null,
+    kills : Number
+  }>,
+  state: State,
+  time: Date
 }
 ```
 
