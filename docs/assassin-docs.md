@@ -123,6 +123,18 @@ Requires authentication. Takes
 
 `description` is optional.
 
+Returns
+
+```ts
+{ game : String }
+```
+
+`game` is a game ID.
+
+### What's a game ID?
+
+Game IDs used to be incremental. Now, they're five digit hexadecimal sequences, like `e1e10`. They're always strings.
+
 ### What's a good game name?
 
 At most a hundred characters. Can't be empty.
@@ -252,7 +264,7 @@ With auth, you also need to give:
 { code : String }
 ```
 
-The `code` is the target's kill code.
+The `code` is the target's kill code. Not case sensitive.
 
 ## POST `shuffle?game[GAME]`
 

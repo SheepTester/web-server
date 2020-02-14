@@ -31,7 +31,7 @@ Promise.all([
       active: 0
     }
   }))
-]).then(async ([randomCode, ...databases]) => {
+]).then(async ([randomWords, ...databases]) => {
   const [
     usersDB,
     sessionsDB,
@@ -46,6 +46,10 @@ Promise.all([
     notifications,
     globalStats
   ] = databases.map(db => db.value())
+
+  function randomCode () {
+    return randomWords(4).join(' ')
+  }
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
@@ -258,7 +262,10 @@ Promise.all([
   router.post('/create-game', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
 
-    const gameID = Math.random().toString() // TODO
+    let gameID
+    do {
+      gameID = Math.floor(Math.random() * 0x100000).toString(16).padStart(5, '0')
+    } while (!games[gameID])
     const game = {
       creator: username,
       password: '',
@@ -452,7 +459,7 @@ Promise.all([
     const target = game.players[player.target]
 
     const { code } = req.body
-    assert(code === target.code, 'The given code is incorrect. Trying checking the spelling again.')
+    assert(code.toLowerCase() === target.code, 'The given code is incorrect. Trying checking the spelling again.')
 
     notifications[player.target].splice(0, 0, {
       type: 'killed',
