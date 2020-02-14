@@ -23,7 +23,7 @@ Promise.all([
   // during production lol.
   low(new FileAsync(path.resolve(__dirname, './db-users-v2.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-sessions-v2.json'))),
-  low(new FileAsync(path.resolve(__dirname, './db-games-v2.json'), { defaultValue: [] })),
+  low(new FileAsync(path.resolve(__dirname, './db-games-v2.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-notifications-v2.json'))),
   low(new FileAsync(path.resolve(__dirname, './db-global-v2.json'), {
     defaultValue: {
@@ -56,16 +56,16 @@ Promise.all([
 
   function verifySession (sessionID) {
     const session = sessions[sessionID]
-    assert(has(sessions, sessionID), '(Invalid session) Session doesn\'t exist!')
+    assert(has(sessions, sessionID), 'Session doesn\'t exist! (Invalid session)')
     if (Date.now() > session.end) {
       delete sessions[sessionID]
       // Don't write to database because:
       // 1. It's not really that important here
       // 2. This function doesn't return a promise so nothing can then/catch on it.
       // Something else'll save it later.
-      throw new Error('(Invalid session) Session expired!')
+      throw new Error('Your session has expired. (Invalid session)')
     }
-    assert(has(users, session.user), '(Invalid session) Nonexistent user...?')
+    assert(has(users, session.user), 'Nonexistent user...? (Invalid session)')
     return {
       user: users[session.user],
       username: session.user
@@ -75,9 +75,9 @@ Promise.all([
   function getGame (req, authUser) {
     const { game: gameID } = req.query
     const game = games[gameID]
-    assert(has(games, gameID), 'Nonexistent game!')
+    assert(has(games, gameID), 'This game does not exist.')
     if (authUser) {
-      assert(authUser.myGames.includes(gameID), 'Not creator of game!')
+      assert(authUser.myGames.includes(gameID), 'You are not the creator of this game.')
     }
     return { game, gameID }
   }
@@ -96,7 +96,7 @@ Promise.all([
       const { salt, password: oldHash } = user
       if (!init) {
         // Verify that user knows old password
-        assert(await hashPassword(oldPassword, salt) === oldHash, 'Old password matchn\'t!')
+        assert(await hashPassword(oldPassword, salt) === oldHash, 'The old password is incorrect.')
       }
       user.password = await hashPassword(password, salt)
     }
@@ -126,8 +126,8 @@ Promise.all([
       game.description = description
     }
     if (password !== undefined) {
-      assert(typeof password === 'string', 'Password is not string!')
-      assert(password.length <= 200, 'Password too long!')
+      assert(typeof password === 'string', 'Passphrase is not string!')
+      assert(password.length <= 200, 'Passphrase too long!')
       game.password = password
     }
   }
@@ -157,6 +157,7 @@ Promise.all([
       game.ended = true
       const winner = Object.keys(game.players).find(player => game.players[player].target)
       const winnerName = users[winner].name
+      game.winner = winner
       for (const player of Object.keys(game.players)) {
         notifications[player].splice(0, 0, {
           type: 'game-ended',
@@ -178,7 +179,7 @@ Promise.all([
     assert(usernameRegex.test(username), 'Boring username!')
     // Using traditional property get here so that things like "__proto__"
     // automatically exist and won't goof up everything.
-    assert(!users[username], 'Username taken!')
+    assert(!users[username], 'This username has already been taken.')
 
     const salt = randomID()
     users[username] = {
@@ -200,8 +201,8 @@ Promise.all([
   router.post('/login', asyncHandler(async (req, res) => {
     const { username, password } = req.body
     const user = users[username]
-    assert(has(users, username), 'Nonexistent user!')
-    assert(await hashPassword(password, user.salt) === user.password, 'Password too creative!')
+    assert(has(users, username), 'Such a user does not exist. Maybe you misspelled your username?')
+    assert(await hashPassword(password, user.salt) === user.password, 'The password given is incorrect.')
     const session = createSession(username)
     await sessionsDB.write()
     res.send({ session, username })
@@ -230,7 +231,7 @@ Promise.all([
   // Public user data (for profiles)
   router.get('/user', (req, res) => {
     const { user: username } = req.query
-    assert(has(users, username), 'User doesn\'t exist!')
+    assert(has(users, username), 'This user does not exist.')
     const { name, bio, myGames, games: joinedGames } = users[username]
     res.send({
       name,
@@ -257,6 +258,7 @@ Promise.all([
   router.post('/create-game', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
 
+    const gameID = Math.random().toString() // TODO
     const game = {
       creator: username,
       password: '',
@@ -266,9 +268,7 @@ Promise.all([
       ended: false
     }
     gameSettings(game, req.body, true)
-    games.push(game)
-
-    const gameID = games.indexOf(game).toString()
+    games[gameID] = game
     user.myGames.push(gameID)
 
     await Promise.all([usersDB.write(), gamesDB.write()])
@@ -452,7 +452,7 @@ Promise.all([
     const target = game.players[player.target]
 
     const { code } = req.body
-    assert(code === target.code, 'Wrong code!')
+    assert(code === target.code, 'The given code is incorrect. Trying checking the spelling again.')
 
     notifications[player.target].splice(0, 0, {
       type: 'killed',
