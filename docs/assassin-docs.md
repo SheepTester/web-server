@@ -271,6 +271,8 @@ Returns an ok.
 
 You can't leave while a game is running, but players can still be kicked.
 
+When a player is kicked, their assassin's code is NOT regenerated.
+
 ### What happens if my target is kicked?
 
 The kicked person's target becomes your target.
@@ -313,9 +315,13 @@ With auth, you also need to give:
 
 The `code` is the target's kill code. Not case sensitive, and all whitespace is removed.
 
+When a player is killed, the assassin's code is NOT regenerated.
+
 ## POST `shuffle?game[GAME]`
 
 With an ongoing game and auth, it'll do shufflances and ok.
+
+THAT IS, shuffling rearranges the targets for all alive players. Codes are also regenerated.
 
 ## GET `stats`
 

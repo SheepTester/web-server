@@ -140,6 +140,7 @@ Promise.all([
 
   function shuffleTargets (players) {
     for (let i = players.length; i--;) {
+      players[i][1].code = randomCode() // (Re)Generate code
       if (i > 0) {
         const targetIndex = Math.floor(Math.random() * i)
         const target = players[targetIndex]
@@ -354,7 +355,7 @@ Promise.all([
     // Case insensitive
     assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
     user.games.push(gameID)
-    game.players[username] = { kills: 0, code: randomCode(), joined: Date.now() }
+    game.players[username] = { kills: 0, joined: Date.now() }
     await Promise.all([usersDB.write(), gamesDB.write()])
     res.send({ ok: 'with luck' })
   }))
@@ -489,7 +490,6 @@ Promise.all([
     player.kills++
     player.target = target.target
     game.players[target.target].assassin = username
-    player.code = randomCode() // Regenerate code
 
     delete target.target
     target.killed = Date.now()
