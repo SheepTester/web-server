@@ -434,6 +434,7 @@ Promise.all([
     assert(has(game.players, username), 'Not a player!')
 
     const { target, code } = game.players[username]
+    assert(target, 'You have already been eliminated.')
     res.send({
       game: gameID,
       gameName: game.name,
@@ -450,13 +451,15 @@ Promise.all([
       const game = games[gameID]
       if (game.started && !game.ended && has(game.players, username)) {
         const { target, code } = game.players[username]
-        statuses.push({
-          game: gameID,
-          gameName: game.name,
-          target,
-          targetName: users[target].name,
-          code
-        })
+        if (target) {
+          statuses.push({
+            game: gameID,
+            gameName: game.name,
+            target,
+            targetName: users[target].name,
+            code
+          })
+        }
       }
     }
     res.send(statuses)
@@ -507,14 +510,16 @@ Promise.all([
 
     shuffleTargets(Object.entries(game.players).filter(player => player[1].target))
 
-    for (const player of Object.keys(game.players)) {
-      notifications[player].splice(0, 0, {
-        type: 'shuffle',
-        game: gameID,
-        gameName: game.name,
-        time: Date.now(),
-        read: false
-      })
+    for (const [player, { target }] of Object.entries(game.players)) {
+      if (target) {
+        notifications[player].splice(0, 0, {
+          type: 'shuffle',
+          game: gameID,
+          gameName: game.name,
+          time: Date.now(),
+          read: false
+        })
+      }
     }
 
     await [gamesDB.write(), notificationsDB.write()]
