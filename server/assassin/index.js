@@ -60,7 +60,7 @@ Promise.all([
 
   function verifySession (sessionID) {
     const session = sessions[sessionID]
-    assert(has(sessions, sessionID), 'Session doesn\'t exist! (Invalid session)')
+    assert(has(sessions, sessionID), 'You\'re not signed in. (Invalid session)')
     if (Date.now() > session.end) {
       delete sessions[sessionID]
       // Don't write to database because:
@@ -473,7 +473,7 @@ Promise.all([
     const target = game.players[player.target]
 
     const { code } = req.body
-    assert(code.toLowerCase() === target.code, 'The given code is incorrect. Trying checking the spelling again.')
+    assert(code.toLowerCase().replace(/\s/g, '') === target.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
 
     notifications[player.target].splice(0, 0, {
       type: 'killed',

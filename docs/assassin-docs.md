@@ -311,7 +311,7 @@ With auth, you also need to give:
 { code : String }
 ```
 
-The `code` is the target's kill code. Not case sensitive.
+The `code` is the target's kill code. Not case sensitive, and all whitespace is removed.
 
 ## POST `shuffle?game[GAME]`
 
