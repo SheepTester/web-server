@@ -257,6 +257,8 @@ Okays given with auth
 { password : String }
 ```
 
+This is case insensitive and trims whitespace at the ends.
+
 ## POST `leave?game=[GAME]`
 
 Used for both kicking and leaving on one's own.

@@ -353,7 +353,7 @@ Promise.all([
     const { password } = req.body
     assert(!game.started, 'Game already started!')
     // Case insensitive
-    assert(password.toLowerCase() === game.password.toLowerCase(), 'Password bad!')
+    assert(password.toLowerCase().trim() === game.password.toLowerCase().trim(), 'Password bad!')
     user.games.push(gameID)
     game.players[username] = { kills: 0, joined: Date.now() }
     await Promise.all([usersDB.write(), gamesDB.write()])
