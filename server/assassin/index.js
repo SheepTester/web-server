@@ -356,7 +356,7 @@ Promise.all([
     user.games.push(gameID)
     game.players[username] = { kills: 0, joined: Date.now() }
     await Promise.all([usersDB.write(), gamesDB.write()])
-    res.send({ ok: 'with luck' })
+    res.send({ name: user.name })
   }))
 
   router.post('/leave', asyncHandler(async (req, res) => {
