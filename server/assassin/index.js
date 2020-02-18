@@ -11,8 +11,7 @@ const FileAsync = require('lowdb/adapters/FileAsync')
 
 function goodPassword (password) {
   return typeof password === 'string' &&
-    password.length >= 6 &&
-    password.includes(' ') &&
+    password.length >= 1 &&
     password.length <= 200
 }
 
