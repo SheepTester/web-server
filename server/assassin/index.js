@@ -188,15 +188,16 @@ Promise.all([
     assert(!users[username], 'This username has already been taken.')
 
     const salt = randomID()
-    users[username] = {
+    const user = {
       salt,
       bio: '',
       games: [],
       myGames: [],
       emailNotifs: false
     }
+    await userSettings(user, req.body, true)
+    users[username] = user
     notifications[username] = []
-    await userSettings(users[username], req.body, true)
 
     const sessionID = createSession(username)
 
