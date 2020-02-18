@@ -351,6 +351,7 @@ Promise.all([
     const { game, gameID } = getGame(req)
     const { password } = req.body
     assert(!game.started, 'Game already started!')
+    assert(!user.games.includes(gameID), 'User already in game!')
     // Case insensitive
     assert(password.toLowerCase().trim() === game.password.toLowerCase().trim(), 'Password bad!')
     user.games.push(gameID)
@@ -393,7 +394,7 @@ Promise.all([
       // I don't think it's necessary to regenerate the assassin's code.
       oneDied(gameID, game)
     }
-    targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
+    targetUser.games = targetUser.games.filter(game => game !== gameID)
     delete game.players[targetUsername]
 
     await Promise.all([usersDB.write(), gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
