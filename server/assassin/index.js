@@ -356,7 +356,7 @@ Promise.all([
     user.games.push(gameID)
     game.players[username] = { kills: 0, joined: Date.now() }
     await Promise.all([usersDB.write(), gamesDB.write()])
-    res.send({ ok: 'with luck' })
+    res.send({ name: user.name })
   }))
 
   router.post('/leave', asyncHandler(async (req, res) => {
@@ -521,7 +521,33 @@ Promise.all([
       }
     }
 
-    await [gamesDB.write(), notificationsDB.write()]
+    await Promise.all([gamesDB.write(), notificationsDB.write()])
+    res.send({ ok: 'probably' })
+  }))
+
+  router.post('/announce', asyncHandler(async (req, res) => {
+    const { user } = verifySession(req.get('X-Session-ID'))
+    const { game, gameID } = getGame(req, user)
+    const { message = '', includeDead = true } = req.body
+    assert(game.ended, 'Game ended!')
+    assert(typeof message === 'string', 'Message not string!')
+    assert(message.length > 0, 'Empty message!')
+    assert(message.length < 2000, 'Message cannot be over 2k chars long!')
+
+    for (const [player, { target }] of Object.entries(game.players)) {
+      if (includeDead || target) {
+        notifications[player].splice(0, 0, {
+          type: 'announcement',
+          game: gameID,
+          gameName: game.name,
+          message,
+          time: Date.now(),
+          read: false
+        })
+      }
+    }
+
+    await notificationsDB.write()
     res.send({ ok: 'probably' })
   }))
 

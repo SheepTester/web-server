@@ -24,7 +24,7 @@ It just needs to exist. It's not that sophisticated. Also can't be over 50 chara
 
 ### What's a good password?
 
-Por lo menos 6 characters, of which one needs to be a space. Can't be over 200 characters.
+Por lo menos 6 characters. Can't be over 200 characters.
 
 ### What's a good email?
 
@@ -307,7 +307,7 @@ Gets statuses for all sections (see `status`). With auth,
 Array<{ target : String, targetName : String, code : String, game : String, gameName : String }>
 ```
 
-## POST `kill?game[GAME]`
+## POST `kill?game=[GAME]`
 
 With auth, you also need to give:
 
@@ -319,11 +319,21 @@ The `code` is the target's kill code. Not case sensitive, and all whitespace is 
 
 When a player is killed, the assassin's code is NOT regenerated.
 
-## POST `shuffle?game[GAME]`
+## POST `shuffle?game=[GAME]`
 
 With an ongoing game and auth, it'll do shufflances and ok.
 
 THAT IS, shuffling rearranges the targets for all alive players. Codes are also regenerated.
+
+## POST `announce?game=[GAME]`
+
+With auth, give
+
+```ts
+{ message : String, includeDead : Bool }
+```
+
+And it'll ok and send a notification to all the players. If `includeDead` is `false`, it'll only send it to alive players. Only works before the game ends. 2k char limit.
 
 ## GET `stats`
 
