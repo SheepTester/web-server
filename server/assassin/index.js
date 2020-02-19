@@ -333,14 +333,15 @@ Promise.all([
       name,
       description,
       players: Object.entries(players)
-        .map(([username, { kills, killed, assassin }]) => ({
+        .map(([username, { kills, killed, assassin, joined }]) => ({
           username,
           name: users[username].name,
           alive: !killed,
           killTime: killed || null,
           killer: killed ? assassin : null,
           killerName: killed ? users[assassin].name : null,
-          kills
+          kills,
+          joined
         })),
       state: started ? (ended ? 'ended' : 'started') : 'starting',
       time: started ? ended || started : created
