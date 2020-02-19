@@ -109,14 +109,14 @@ Returns
   name : String,
   bio : String,
   myGames : Array<{
-    game : String,
+    game : GameID,
     name : String,
     state : State,
     time : Date,
     players : Number
   }>,
   games : Array<{
-    game : String,
+    game : GameID,
     name : String,
     state : State,
     players : Number,
@@ -302,7 +302,13 @@ With auth, start the game. Returns an ok. Requires at least 2 players.
 While a game is running, with auth, it'll give
 
 ```ts
-{ target : String, targetName : String, code : String, game : String, gameName : String }
+{
+  game : GameID,
+  gameName : String,
+  target : String,
+  targetName : String,
+  code : String
+}
 ```
 
 `target` is a username. `targetName` is their display name. `code` is used for killing (see `kill`).
@@ -313,12 +319,37 @@ While a game is running, with auth, it'll give
 
 Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) (edited slightly) used to assassinate people
 
-## GET `statuses`
+## GET `statuses?all=[true?]`
 
 Gets statuses for all sections (see `status`). With auth,
 
 ```ts
-Array<{ target : String, targetName : String, code : String, game : String, gameName : String }>
+Array<{
+  game : GameID,
+  gameName : String,
+  target : String,
+  targetName : String,
+  code : String
+}>
+```
+
+If you add `?all=true`, then it'll return this instead:
+
+```ts
+{
+  statuses : Array<{
+    game : GameID,
+    gameName : String,
+    target : String,
+    targetName : String,
+    code : String
+  }>,
+  others : Array<{
+    game : GameID,
+    gameName : String,
+    state: State
+  }>
+}
 ```
 
 ## POST `kill?game[GAME]`

@@ -458,23 +458,42 @@ Promise.all([
 
   router.get('/statuses', (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
+    const { all } = req.query
     const statuses = []
+    const others = []
     for (const gameID of users[username].games) {
       const game = games[gameID]
-      if (game.started && !game.ended && has(game.players, username)) {
-        const { target, code } = game.players[username]
-        if (target) {
-          statuses.push({
-            game: gameID,
-            gameName: game.name,
-            target,
-            targetName: users[target].name,
-            code
-          })
+      if (has(game.players, username)) {
+        const entry = {
+          game: gameID,
+          gameName: game.name
+        }
+        if (game.started) {
+          if (game.ended) {
+            others.push({ ...entry, state: 'ended' })
+          } else {
+            const { target, code } = game.players[username]
+            if (target) {
+              statuses.push({
+                ...entry,
+                target,
+                targetName: users[target].name,
+                code
+              })
+            } else {
+              others.push({ ...entry, state: 'started' })
+            }
+          }
+        } else {
+          others.push({ ...entry, state: 'starting' })
         }
       }
     }
-    res.send(statuses)
+    if (all) {
+      res.send({ statuses, others })
+    } else {
+      res.send(statuses)
+    }
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
