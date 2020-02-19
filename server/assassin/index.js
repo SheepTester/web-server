@@ -348,6 +348,16 @@ Promise.all([
     })
   })
 
+  router.get('/names', (req, res) => {
+    const { games: gameList, users: userList, defaultGame, defaultUser } = req.query
+    res.send({
+      games: !gameList ? [] : gameList.split(',').map(gameID =>
+        games[gameID] ? games[gameID].name : defaultGame === undefined ? gameID : defaultGame),
+      users: !userList ? [] : userList.split(',').map(username =>
+        users[username] ? users[username].name : defaultUser === undefined ? username : defaultUser)
+    })
+  })
+
   router.post('/join', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGame(req)
