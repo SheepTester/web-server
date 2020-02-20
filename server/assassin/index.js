@@ -584,36 +584,57 @@ Promise.all([
   router.post('/kill', asyncHandler(async (req, res) => {
     const { username, user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
+    const { self = false } = req.query
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
 
     const player = game.players[username]
     assert(player.target, 'Player was killed!')
-    assert(has(game.players, player.target), 'Uh... your target isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
-    const target = game.players[player.target]
 
-    const { code } = req.body
-    assert(code.toLowerCase().replace(/\s/g, '') === target.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
+    let killer, victim
+    if (self) {
+      victim = player
+      assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      killer = game.players[player.assassin]
 
-    notifications[player.target].splice(0, 0, {
-      type: 'killed',
-      game: gameID,
-      gameName: game.name,
-      by: username,
-      name: user.name,
-      time: Date.now(),
-      read: false
-    })
+      notifications[player.assassin].splice(0, 0, {
+        type: 'killed-self',
+        game: gameID,
+        gameName: game.name,
+        user: username,
+        name: user.name,
+        time: Date.now(),
+        read: false
+      })
+    } else {
+      killer = player
+      assert(has(game.players, player.target), 'Uh... your target isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      victim = game.players[player.target]
 
-    globalStats.kills++
-    player.kills++
-    player.target = target.target
-    getPlayer(game, target.target).assassin = username
+      const { code } = req.body
+      assert(code.toLowerCase().replace(/\s/g, '') === victim.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
 
-    delete target.target
-    target.killed = Date.now()
+      notifications[player.target].splice(0, 0, {
+        type: 'killed',
+        game: gameID,
+        gameName: game.name,
+        by: username,
+        name: user.name,
+        time: Date.now(),
+        read: false
+      })
+    }
+
+    killer.kills++
+    killer.target = victim.target
+    getPlayer(game, victim.target).assassin = victim.assassin
+
+    delete victim.target
+    victim.killed = Date.now()
+
     oneDied(gameID, game)
+    globalStats.kills++
 
     await Promise.all([gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'safely' })

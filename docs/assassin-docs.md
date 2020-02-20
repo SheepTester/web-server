@@ -370,7 +370,7 @@ If you add `?all=true`, then it'll return this instead:
 }
 ```
 
-## POST `kill?game[GAME]`
+## POST `kill?game[GAME]&self=[true?]`
 
 With auth, you also need to give:
 
@@ -379,6 +379,8 @@ With auth, you also need to give:
 ```
 
 The `code` is the target's kill code. Not case sensitive, and all whitespace is removed.
+
+However, if `self` is true, then you don't need to give anything but auth, and it'll mark yourself as dead. This can be used if you're honest and know that your assassin has found you (see [#1](https://github.com/Orbiit/elimination/issues/1)).
 
 When a player is killed, the assassin's code is NOT regenerated.
 
