@@ -2,6 +2,51 @@
 
 On the client-side, this is known as Elimination. I changed the name after making the backend. Oops!
 
+In JavaScript, you can make requests like this:
+
+```js
+const host = 'https://sheep.thingkingland.app/assassin/'
+
+function get (path, session) {
+  return fetch(host + path, {
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-Session-Id': session
+    }
+  })
+    .then(r => r.ok
+      ? r.json()
+      : r.json().then(err => Promise.reject(err)))
+}
+
+function post (path, session, body = {}) {
+  return fetch(host + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-Session-Id': session
+    },
+    body: JSON.stringify(body)
+  })
+    .then(r => r.ok
+      ? r.json()
+      : r.json().then(err => Promise.reject(err)))
+}
+
+get('notifications?from=0&limit=5', session)
+  .then(({ notifications }) => {
+    console.log(notifications)
+    return post('read', session)
+  })
+  .then(() => {
+    console.log('Read!')
+  })
+  .catch(err => {
+    console.error('There was a problem.', err)
+  })
+```
+
 ## POST `create-user`
 
 Give it a username and some starter name, password, and email info. A bio is optional.
