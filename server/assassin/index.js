@@ -348,6 +348,30 @@ Promise.all([
     })
   })
 
+  router.get('/games', (req, res) => {
+    const { query, regex: useRegex = false, strict = false } = req.query
+    let filter = () => true
+    if (typeof query === 'string') {
+      if (useRegex !== false) {
+        const regex = new RegExp(query, typeof useRegex === 'string' ? useRegex : '')
+        filter = ([, { name }]) => regex.test(name)
+      } else {
+        if (strict) {
+          filter = ([, { name }]) => name.includes(query)
+        } else {
+          const simplifiedQuery = query.toLowerCase().trim()
+          filter = ([, { name }]) => name.toLowerCase().includes(simplifiedQuery)
+        }
+      }
+    }
+    res.send(Object.entries(games)
+      .filter(filter)
+      .map(([gameID, { name }]) => ({
+        game: gameID,
+        name
+      })))
+  })
+
   router.get('/names', (req, res) => {
     const { games: gameList, users: userList, defaultGame, defaultUser } = req.query
     res.send({

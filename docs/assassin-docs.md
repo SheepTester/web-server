@@ -250,6 +250,20 @@ It can't be over 2k chars, but it can be empty.
 
 No auth.
 
+## GET `games?query=[QUERY?]&regex=[OPTIONS?]&strict=[true?]`
+
+Lists all the games like this:
+
+```ts
+Array<{ game : GameID, name : String }>
+```
+
+If `query` is given:
+
+- If `regex` is specified, it'll create a RegExp object from `query` and use `regex` for options
+
+- Otherwise, it'll do a simple text match search. Set `strict` to true to prevent it from doing it case insensitively
+
 ## GET `names?games=[GAMES]&users=[USERS]&defaultGame=[DEFAULT_GAME?]&defaultUser=[defaultUser?]`
 
 `games` and `users` are a list of game IDs and usernames respectively, joined by a comma `,`. `defaultGame` (optional) is the default value that should be returned if a game doesn't exist, and likewise for `defaultUser` but for users. `users` is an array of usernames. This returns
