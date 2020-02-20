@@ -344,6 +344,17 @@ Promise.all([
     res.send({ game: gameID })
   }))
 
+  router.post('/delete-game', asyncHandler(async (req, res) => {
+    const { user } = verifySession(req.get('X-Session-ID'))
+    const { gameID, game } = getGameFrom(req, user)
+    assert(Object.keys(game.players).length === 0, 'Cannot have anyone in the game!')
+    assert(!game.started, 'Game already started! Oh well.')
+    delete games[gameID]
+    user.myGames = user.myGames.filter(game => game !== gameID)
+    await [usersDB.write(), gamesDB.write()]
+    res.send({ ok: 'memorably' })
+  }))
+
   router.post('/game-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req, user)

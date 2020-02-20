@@ -177,6 +177,10 @@ At most 2k chars.
 
 Known on the client-side as a passphrase, it's at most 200 characters. It can be empty.
 
+## POST `delete-game?game=[GAME]`
+
+With auth, deletes the specified game given that there's no one in it. Gives an ok.
+
 ## GET/POST `game-settings?game=[GAME]`
 
 POST takes
