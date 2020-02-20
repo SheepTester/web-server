@@ -422,7 +422,7 @@ This is in reverse chronological order! (newest first)
 
 If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name). The following are values for the `type` property:
 
-`game-started`: Announces when a game has been started to all players.
+`game-started`: Announces when a game has been started to all players. New target is `target` (name `targetName`).
 
 `killed`: When `by` (the killer's username) whose name is `name` (killer's display name) has killed you.
 
@@ -430,7 +430,11 @@ If the notification relates to a game, there are properties `game` (the ID, for 
 
 `kicked`: When the game creator kicks a player. The `reason` is a string that can be empty. This can be sent before or during a game.
 
-`shuffle`: When the targets get shuffled.
+`kicked-new-target`: When your target gets kicked. New target is `target` (name `targetName`).
+
+`shuffle`: When the targets get shuffled. New target is `target` (name `targetName`).
+
+`killed-self`: When your target becomes honest. New target is `target` (name `targetName`).
 
 ## POST `/read`
 

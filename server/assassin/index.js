@@ -490,6 +490,17 @@ Promise.all([
       getPlayer(game, targetPlayer.target).assassin = targetPlayer.assassin
       // I don't think it's necessary to regenerate the assassin's code.
       oneDied(gameID, game)
+      if (has(notifications, targetPlayer.assassin)) {
+        notifications[targetPlayer.assassin].splice(0, 0, {
+          type: 'kicked-new-target',
+          game: gameID,
+          gameName: game.name,
+          target: targetPlayer.target,
+          targetName: getUser(targetPlayer.target).name,
+          time: Date.now(),
+          read: false
+        })
+      }
     }
     targetUser.games = targetUser.games.filter(game => game !== gameID)
     delete game.players[targetUsername]
@@ -509,11 +520,13 @@ Promise.all([
     game.alive = players.length
     game.started = Date.now()
     globalStats.active++
-    for (const player of Object.keys(game.players)) {
+    for (const [player, { target }] of Object.entries(game.players)) {
       notifications[player].splice(0, 0, {
         type: 'game-started',
         game: gameID,
         gameName: game.name,
+        target: target,
+        targetName: getUser(target).name,
         time: Date.now(),
         read: false
       })
@@ -654,6 +667,8 @@ Promise.all([
           type: 'shuffle',
           game: gameID,
           gameName: game.name,
+          target: target,
+          targetName: getUser(target).name,
           time: Date.now(),
           read: false
         })
