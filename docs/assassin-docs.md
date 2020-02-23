@@ -315,7 +315,7 @@ If `query` is given:
 
 ## GET `names?games=[GAMES]&users=[USERS]&defaultGame=[DEFAULT_GAME?]&defaultUser=[defaultUser?]`
 
-`games` and `users` are a list of game IDs and usernames respectively, joined by a comma `,`. `defaultGame` (optional) is the default value that should be returned if a game doesn't exist, and likewise for `defaultUser` but for users. `users` is an array of usernames. This returns
+`games` and `users` are a list of game IDs and usernames respectively, joined by a comma `,`. `defaultGame` (optional) is the default value that should be returned if a game doesn't exist, and likewise for `defaultUser` but for users. If `defaultGame` is not given, it'll return the game ID for nonexistent games, and if `usernameUser` is not given, it'll return the username for nonexistent users. `users` is an array of usernames. This returns
 
 ```ts
 {
@@ -410,10 +410,13 @@ If you add `?all=true`, then it'll return this instead:
   others : Array<{
     game : GameID,
     gameName : String,
-    state: State
+    state : State,
+    time : Date
   }>
 }
 ```
+
+`others` includes games that haven't started or already ended, and it also includes ongoing games in which the player has died. `time`, again, depends on the state because it's meant for sorting by recentness. If the game hasn't started, it'll be the time the user joined the game. If the game has started, it'll return the player's death time (if the player hasn't died yet, it should be in `statuses`, but just in case for those buggy scenarios it falls back to the start time). If the game has ended, it'll return the end time.
 
 ## POST `kill?game[GAME]&self=[true?]`
 

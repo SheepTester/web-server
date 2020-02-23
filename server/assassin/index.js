@@ -568,7 +568,7 @@ Promise.all([
         }
         if (game.started) {
           if (game.ended) {
-            others.push({ ...entry, state: 'ended' })
+            others.push({ ...entry, state: 'ended', time: game.ended })
           } else {
             const { target, code } = game.players[username]
             if (target) {
@@ -579,11 +579,11 @@ Promise.all([
                 code
               })
             } else {
-              others.push({ ...entry, state: 'started' })
+              others.push({ ...entry, state: 'started', time: game.players[username].killed || game.started })
             }
           }
         } else {
-          others.push({ ...entry, state: 'starting' })
+          others.push({ ...entry, state: 'starting', time: game.players[username].joined })
         }
       }
     }
