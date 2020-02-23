@@ -2,6 +2,51 @@
 
 On the client-side, this is known as Elimination. I changed the name after making the backend. Oops!
 
+In JavaScript, you can make requests like this:
+
+```js
+const host = 'https://sheep.thingkingland.app/assassin/'
+
+function get (path, session) {
+  return fetch(host + path, {
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-Session-Id': session
+    }
+  })
+    .then(r => r.ok
+      ? r.json()
+      : r.json().then(err => Promise.reject(err)))
+}
+
+function post (path, session, body = {}) {
+  return fetch(host + path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-Session-Id': session
+    },
+    body: JSON.stringify(body)
+  })
+    .then(r => r.ok
+      ? r.json()
+      : r.json().then(err => Promise.reject(err)))
+}
+
+get('notifications?from=0&limit=5', session)
+  .then(({ notifications }) => {
+    console.log(notifications)
+    return post('read', session)
+  })
+  .then(() => {
+    console.log('Read!')
+  })
+  .catch(err => {
+    console.error('There was a problem.', err)
+  })
+```
+
 ## POST `create-user`
 
 Give it a username and some starter name, password, and email info. A bio is optional.
@@ -109,14 +154,14 @@ Returns
   name : String,
   bio : String,
   myGames : Array<{
-    game : String,
+    game : GameID,
     name : String,
     state : State,
     time : Date,
     players : Number
   }>,
   games : Array<{
-    game : String,
+    game : GameID,
     name : String,
     state : State,
     players : Number,
@@ -176,6 +221,10 @@ At most 2k chars.
 ### What's a good game password?
 
 Known on the client-side as a passphrase, it's at most 200 characters. It can be empty.
+
+## POST `delete-game?game=[GAME]`
+
+With auth, deletes the specified game given that there's no one in it. Gives an ok.
 
 ## GET/POST `game-settings?game=[GAME]`
 
@@ -240,7 +289,8 @@ It can't be over 2k chars, but it can be empty.
     killTime : Date | null,
     killer : String | null,
     killerName : String | null,
-    kills : Number
+    kills : Number,
+    joined : Date
   }>,
   state: State,
   time: Date
@@ -248,6 +298,33 @@ It can't be over 2k chars, but it can be empty.
 ```
 
 No auth.
+
+## GET `games?query=[QUERY?]&regex=[OPTIONS?]&strict=[true?]`
+
+Lists all the games like this:
+
+```ts
+Array<{ game : GameID, name : String }>
+```
+
+If `query` is given:
+
+- If `regex` is specified, it'll create a RegExp object from `query` and use `regex` for options
+
+- Otherwise, it'll do a simple text match search. Set `strict` to true to prevent it from doing it case insensitively
+
+## GET `names?games=[GAMES]&users=[USERS]&defaultGame=[DEFAULT_GAME?]&defaultUser=[defaultUser?]`
+
+`games` and `users` are a list of game IDs and usernames respectively, joined by a comma `,`. `defaultGame` (optional) is the default value that should be returned if a game doesn't exist, and likewise for `defaultUser` but for users. If `defaultGame` is not given, it'll return the game ID for nonexistent games, and if `usernameUser` is not given, it'll return the username for nonexistent users. `users` is an array of usernames. This returns
+
+```ts
+{
+  games : Array<String>,
+  users : Array<String>
+}
+```
+
+which are arrays of the display names or default values for each of the given game IDs/usernames.
 
 ## POST `join?game=[GAME]`
 
@@ -288,7 +365,13 @@ With auth, start the game. Returns an ok. Requires at least 2 players.
 While a game is running, with auth, it'll give
 
 ```ts
-{ target : String, targetName : String, code : String, game : String, gameName : String }
+{
+  game : GameID,
+  gameName : String,
+  target : String,
+  targetName : String,
+  code : String
+}
 ```
 
 `target` is a username. `targetName` is their display name. `code` is used for killing (see `kill`).
@@ -299,15 +382,43 @@ While a game is running, with auth, it'll give
 
 Kill codes are four random nouns from [this list](https://gist.github.com/fogleman/7b26877050cac235343d) (edited slightly) used to assassinate people
 
-## GET `statuses`
+## GET `statuses?all=[true?]`
 
 Gets statuses for all sections (see `status`). With auth,
 
 ```ts
-Array<{ target : String, targetName : String, code : String, game : String, gameName : String }>
+Array<{
+  game : GameID,
+  gameName : String,
+  target : String,
+  targetName : String,
+  code : String
+}>
 ```
 
-## POST `kill?game=[GAME]`
+If you add `?all=true`, then it'll return this instead:
+
+```ts
+{
+  statuses : Array<{
+    game : GameID,
+    gameName : String,
+    target : String,
+    targetName : String,
+    code : String
+  }>,
+  others : Array<{
+    game : GameID,
+    gameName : String,
+    state : State,
+    time : Date
+  }>
+}
+```
+
+`others` includes games that haven't started or already ended, and it also includes ongoing games in which the player has died. `time`, again, depends on the state because it's meant for sorting by recentness. If the game hasn't started, it'll be the time the user joined the game. If the game has started, it'll return the player's death time (if the player hasn't died yet, it should be in `statuses`, but just in case for those buggy scenarios it falls back to the start time). If the game has ended, it'll return the end time.
+
+## POST `kill?game=[GAME]&self=[true?]`
 
 With auth, you also need to give:
 
@@ -316,6 +427,8 @@ With auth, you also need to give:
 ```
 
 The `code` is the target's kill code. Not case sensitive, and all whitespace is removed.
+
+However, if `self` is true, then you don't need to give anything but auth, and it'll mark yourself as dead. This can be used if you're honest and know that your assassin has found you (see [#1](https://github.com/Orbiit/elimination/issues/1)).
 
 When a player is killed, the assassin's code is NOT regenerated.
 
@@ -367,7 +480,7 @@ This is in reverse chronological order! (newest first)
 
 If the notification relates to a game, there are properties `game` (the ID, for the URL) and `gameName` (the display name). The following are values for the `type` property:
 
-`game-started`: Announces when a game has been started to all players.
+`game-started`: Announces when a game has been started to all players. New target is `target` (name `targetName`).
 
 `killed`: When `by` (the killer's username) whose name is `name` (killer's display name) has killed you.
 
@@ -375,7 +488,11 @@ If the notification relates to a game, there are properties `game` (the ID, for 
 
 `kicked`: When the game creator kicks a player. The `reason` is a string that can be empty. This can be sent before or during a game.
 
-`shuffle`: When the targets get shuffled.
+`kicked-new-target`: When your target gets kicked. New target is `target` (name `targetName`).
+
+`shuffle`: When the targets get shuffled. New target is `target` (name `targetName`).
+
+`killed-self`: When your target becomes honest. New target is `target` (name `targetName`).
 
 ## POST `/read`
 

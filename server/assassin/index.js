@@ -75,10 +75,10 @@ Promise.all([
     }
   }
 
-  function getGame (req, authUser) {
+  function getGameFrom (req, authUser) {
     const { game: gameID } = req.query
-    const game = games[gameID]
     assert(has(games, gameID), 'This game does not exist.')
+    const game = games[gameID]
     if (authUser) {
       assert(authUser.myGames.includes(gameID), 'You are not the creator of this game.')
     }
@@ -137,6 +137,49 @@ Promise.all([
     }
   }
 
+  // "Safe" getters; in loops it shouldn't throw an error if one person doesn't
+  // exist for some reason, so this is a placeholder.
+
+  const emptyUser = {
+    salt: '',
+    bio: 'This user does not exist.',
+    games: [],
+    myGames: [],
+    emailNotifs: 0,
+    lastEdited: 0,
+    name: 'Nonexistent user',
+    password: '',
+    email: ''
+  }
+  function getUser (username) {
+    return has(users, username) ? users[username] : emptyUser
+  }
+
+  const emptyGame = {
+    creator: '',
+    password: '',
+    description: 'This game does not exist.',
+    players: {},
+    started: false,
+    ended: false,
+    lastEdited: 0,
+    name: 'Nonexistent game'
+  }
+  function getGame (gameID) {
+    return has(games, gameID) ? games[gameID] : emptyGame
+  }
+
+  const emptyPlayer = {
+    kills: 0,
+    code: '',
+    joined: 0,
+    assassin: '',
+    killed: 0
+  }
+  function getPlayer (game, username) {
+    return has(game.players, username) ? game.players[username] : emptyPlayer
+  }
+
   function shuffleTargets (players) {
     for (let i = players.length; i--;) {
       players[i][1].code = randomCode() // (Re)Generate code
@@ -161,8 +204,8 @@ Promise.all([
     if (game.alive === 1) {
       globalStats.active--
       game.ended = Date.now()
-      const winner = Object.keys(game.players).find(player => game.players[player].target)
-      const winnerName = users[winner].name
+      const winner = Object.keys(game.players).find(player => getPlayer(game, player).target)
+      const winnerName = getUser(winner).name
       game.winner = winner
       for (const player of Object.keys(game.players)) {
         notifications[player].splice(0, 0, {
@@ -188,15 +231,16 @@ Promise.all([
     assert(!users[username], 'This username has already been taken.')
 
     const salt = randomID()
-    users[username] = {
+    const user = {
       salt,
       bio: '',
       games: [],
       myGames: [],
       emailNotifs: false
     }
+    await userSettings(user, req.body, true)
+    users[username] = user
     notifications[username] = []
-    await userSettings(users[username], req.body, true)
 
     const sessionID = createSession(username)
 
@@ -206,8 +250,8 @@ Promise.all([
 
   router.post('/login', asyncHandler(async (req, res) => {
     const { username, password } = req.body
-    const user = users[username]
     assert(has(users, username), 'Such a user does not exist. Maybe you misspelled your username?')
+    const user = users[username]
     assert(await hashPassword(password, user.salt) === user.password, 'The password given is incorrect.')
     const session = createSession(username)
     await sessionsDB.write()
@@ -242,31 +286,37 @@ Promise.all([
     res.send({
       name,
       bio,
-      myGames: myGames.map(game => ({
-        game,
-        name: games[game].name,
-        state: games[game].started ? (games[game].ended ? 'ended' : 'started') : 'starting',
-        time: games[game].started ? games[game].ended || games[game].started : games[game].created,
-        players: Object.keys(games[game].players).length
-      })),
-      games: joinedGames.map(game => ({
-        game,
-        name: games[game].name,
-        state: games[game].started ? (games[game].ended ? 'ended' : 'started') : 'starting',
-        players: Object.keys(games[game].players).length,
-        kills: games[game].players[username].kills,
-        alive: !games[game].players[username].killed,
-        // `updated` is kind of like the last updated time for a game in the
-        // context of this user. Before a game starts, it gives the creation
-        // time. After the game starts, it gives the player's death. If the
-        // player hasn't died yet, it'll give the end time of the game, but
-        // if the game hasn't ended yet, then it'll give the start time.
-        updated: games[game].started
-          ? (games[game].players[username].killed ||
-            games[game].ended ||
-            games[game].started)
-          : games[game].created
-      }))
+      myGames: myGames.map(gameID => {
+        const game = getGame(gameID)
+        return {
+          game: gameID,
+          name: game.name,
+          state: game.started ? (game.ended ? 'ended' : 'started') : 'starting',
+          time: game.started ? game.ended || game.started : game.created,
+          players: Object.keys(game.players).length
+        }
+      }),
+      games: joinedGames.map(gameID => {
+        const game = getGame(gameID)
+        return {
+          game: gameID,
+          name: game.name,
+          state: game.started ? (game.ended ? 'ended' : 'started') : 'starting',
+          players: Object.keys(game.players).length,
+          kills: getPlayer(game, username).kills,
+          alive: !getPlayer(game, username).killed,
+          // `updated` is kind of like the last updated time for a game in the
+          // context of this user. Before a game starts, it gives the creation
+          // time. After the game starts, it gives the player's death. If the
+          // player hasn't died yet, it'll give the end time of the game, but
+          // if the game hasn't ended yet, then it'll give the start time.
+          updated: game.started
+            ? (getPlayer(game, username).killed ||
+              game.ended ||
+              game.started)
+            : game.created
+        }
+      })
     })
   })
 
@@ -294,9 +344,20 @@ Promise.all([
     res.send({ game: gameID })
   }))
 
+  router.post('/delete-game', asyncHandler(async (req, res) => {
+    const { user } = verifySession(req.get('X-Session-ID'))
+    const { gameID, game } = getGameFrom(req, user)
+    assert(Object.keys(game.players).length === 0, 'Cannot have anyone in the game!')
+    assert(!game.started, 'Game already started! Oh well.')
+    delete games[gameID]
+    user.myGames = user.myGames.filter(game => game !== gameID)
+    await [usersDB.write(), gamesDB.write()]
+    res.send({ ok: 'memorably' })
+  }))
+
   router.post('/game-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req, user)
+    const { game } = getGameFrom(req, user)
     gameSettings(game, req.body, false)
     await gamesDB.write()
     res.send({ ok: 'with luck' })
@@ -304,7 +365,7 @@ Promise.all([
 
   router.get('/game-settings', (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game } = getGame(req, user)
+    const { game } = getGameFrom(req, user)
     const { name, description, password, players, started, ended } = game
     res.send({
       name,
@@ -314,7 +375,7 @@ Promise.all([
       players: Object.entries(players)
         .map(([username, { kills, joined, killed }]) => ({
           username,
-          name: users[username].name,
+          name: getUser(username).name,
           alive: !killed,
           kills,
           joined
@@ -324,33 +385,69 @@ Promise.all([
   })
 
   router.get('/game', (req, res) => {
-    const { game } = getGame(req)
+    const { game } = getGameFrom(req)
     const { creator, name, description, players, started, ended, created } = game
     res.send({
       creator,
-      creatorName: users[creator].name,
+      creatorName: getUser(creator).name,
       name,
       description,
       players: Object.entries(players)
-        .map(([username, { kills, killed, assassin }]) => ({
+        .map(([username, { kills, killed, assassin, joined }]) => ({
           username,
-          name: users[username].name,
+          name: getUser(username).name,
           alive: !killed,
           killTime: killed || null,
           killer: killed ? assassin : null,
-          killerName: killed ? users[assassin].name : null,
-          kills
+          killerName: killed ? getUser(assassin).name : null,
+          kills,
+          joined
         })),
       state: started ? (ended ? 'ended' : 'started') : 'starting',
       time: started ? ended || started : created
     })
   })
 
+  router.get('/games', (req, res) => {
+    const { query, regex: useRegex = false, strict = false } = req.query
+    let filter = () => true
+    if (typeof query === 'string') {
+      if (useRegex !== false) {
+        const regex = new RegExp(query, typeof useRegex === 'string' ? useRegex : '')
+        filter = ([, { name }]) => regex.test(name)
+      } else {
+        if (strict) {
+          filter = ([, { name }]) => name.includes(query)
+        } else {
+          const simplifiedQuery = query.toLowerCase().trim()
+          filter = ([, { name }]) => name.toLowerCase().includes(simplifiedQuery)
+        }
+      }
+    }
+    res.send(Object.entries(games)
+      .filter(filter)
+      .map(([gameID, { name }]) => ({
+        game: gameID,
+        name
+      })))
+  })
+
+  router.get('/names', (req, res) => {
+    const { games: gameList, users: userList, defaultGame, defaultUser } = req.query
+    res.send({
+      games: !gameList ? [] : gameList.split(',').map(gameID =>
+        has(games, gameID) ? games[gameID].name : defaultGame === undefined ? gameID : defaultGame),
+      users: !userList ? [] : userList.split(',').map(username =>
+        has(users, username) ? users[username].name : defaultUser === undefined ? username : defaultUser)
+    })
+  })
+
   router.post('/join', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req)
+    const { game, gameID } = getGameFrom(req)
     const { password } = req.body
     assert(!game.started, 'Game already started!')
+    assert(!user.games.includes(gameID) && !game.players[username], 'User already in game!')
     // Case insensitive
     assert(password.toLowerCase().trim() === game.password.toLowerCase().trim(), 'Password bad!')
     user.games.push(gameID)
@@ -361,7 +458,7 @@ Promise.all([
 
   router.post('/leave', asyncHandler(async (req, res) => {
     const { user, username } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req)
+    const { game, gameID } = getGameFrom(req)
     const { user: target, reason = '' } = req.body
     let targetUsername = username
     let targetUser = user
@@ -383,17 +480,29 @@ Promise.all([
     } else {
       assert(!game.started, 'Game already started!')
     }
-    assert(targetUser.games.includes(gameID), 'User is not a player, no need to kick!')
+    assert(has(game.players, targetUsername), 'User is not a player, no need to kick!')
 
     if (game.started) {
       const targetPlayer = game.players[targetUsername]
       // Redirect target
-      game.players[targetPlayer.assassin].target = targetPlayer.target
-      game.players[targetPlayer.target].assassin = targetPlayer.assassin
+      // idk what the best thing to do is if for some reason these players don't exist
+      getPlayer(game, targetPlayer.assassin).target = targetPlayer.target
+      getPlayer(game, targetPlayer.target).assassin = targetPlayer.assassin
       // I don't think it's necessary to regenerate the assassin's code.
       oneDied(gameID, game)
+      if (has(notifications, targetPlayer.assassin)) {
+        notifications[targetPlayer.assassin].splice(0, 0, {
+          type: 'kicked-new-target',
+          game: gameID,
+          gameName: game.name,
+          target: targetPlayer.target,
+          targetName: getUser(targetPlayer.target).name,
+          time: Date.now(),
+          read: false
+        })
+      }
     }
-    targetUser.games.splice(targetUser.games.indexOf(gameID), 1)
+    targetUser.games = targetUser.games.filter(game => game !== gameID)
     delete game.players[targetUsername]
 
     await Promise.all([usersDB.write(), gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
@@ -402,7 +511,7 @@ Promise.all([
 
   router.post('/start', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req, user)
+    const { game, gameID } = getGameFrom(req, user)
     assert(!game.started, 'Game already started!')
 
     const players = Object.entries(game.players)
@@ -411,11 +520,13 @@ Promise.all([
     game.alive = players.length
     game.started = Date.now()
     globalStats.active++
-    for (const player of Object.keys(game.players)) {
+    for (const [player, { target }] of Object.entries(game.players)) {
       notifications[player].splice(0, 0, {
         type: 'game-started',
         game: gameID,
         gameName: game.name,
+        target: target,
+        targetName: getUser(target).name,
         time: Date.now(),
         read: false
       })
@@ -427,7 +538,7 @@ Promise.all([
 
   router.get('/status', (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
-    const { gameID, game } = getGame(req)
+    const { gameID, game } = getGameFrom(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
@@ -438,64 +549,105 @@ Promise.all([
       game: gameID,
       gameName: game.name,
       target,
-      targetName: users[target].name,
+      targetName: getUser(target).name,
       code
     })
   })
 
   router.get('/statuses', (req, res) => {
-    const { username } = verifySession(req.get('X-Session-ID'))
+    const { username, user } = verifySession(req.get('X-Session-ID'))
+    const { all } = req.query
     const statuses = []
-    for (const gameID of users[username].games) {
-      const game = games[gameID]
-      if (game.started && !game.ended && has(game.players, username)) {
-        const { target, code } = game.players[username]
-        if (target) {
-          statuses.push({
-            game: gameID,
-            gameName: game.name,
-            target,
-            targetName: users[target].name,
-            code
-          })
+    const others = []
+    for (const gameID of user.games) {
+      const game = getGame(gameID)
+      if (has(game.players, username)) {
+        const entry = {
+          game: gameID,
+          gameName: game.name
+        }
+        if (game.started) {
+          if (game.ended) {
+            others.push({ ...entry, state: 'ended', time: game.ended })
+          } else {
+            const { target, code } = game.players[username]
+            if (target) {
+              statuses.push({
+                ...entry,
+                target,
+                targetName: getUser(target).name,
+                code
+              })
+            } else {
+              others.push({ ...entry, state: 'started', time: game.players[username].killed || game.started })
+            }
+          }
+        } else {
+          others.push({ ...entry, state: 'starting', time: game.players[username].joined })
         }
       }
     }
-    res.send(statuses)
+    if (all) {
+      res.send({ statuses, others })
+    } else {
+      res.send(statuses)
+    }
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
-    const { username } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req)
+    const { username, user } = verifySession(req.get('X-Session-ID'))
+    const { game, gameID } = getGameFrom(req)
+    const { self = false } = req.query
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
 
     const player = game.players[username]
     assert(player.target, 'Player was killed!')
-    const target = game.players[player.target]
 
-    const { code } = req.body
-    assert(code.toLowerCase().replace(/\s/g, '') === target.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
+    let killer, victim
+    if (self) {
+      victim = player
+      assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      killer = game.players[player.assassin]
 
-    notifications[player.target].splice(0, 0, {
-      type: 'killed',
-      game: gameID,
-      gameName: game.name,
-      by: username,
-      name: users[username].name,
-      time: Date.now(),
-      read: false
-    })
+      notifications[player.assassin].splice(0, 0, {
+        type: 'killed-self',
+        game: gameID,
+        gameName: game.name,
+        user: username,
+        name: user.name,
+        time: Date.now(),
+        read: false
+      })
+    } else {
+      killer = player
+      assert(has(game.players, player.target), 'Uh... your target isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      victim = game.players[player.target]
 
-    globalStats.kills++
-    player.kills++
-    player.target = target.target
-    game.players[target.target].assassin = username
+      const { code } = req.body
+      assert(code.toLowerCase().replace(/\s/g, '') === victim.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
 
-    delete target.target
-    target.killed = Date.now()
+      notifications[player.target].splice(0, 0, {
+        type: 'killed',
+        game: gameID,
+        gameName: game.name,
+        by: username,
+        name: user.name,
+        time: Date.now(),
+        read: false
+      })
+    }
+
+    killer.kills++
+    killer.target = victim.target
+    getPlayer(game, victim.target).assassin = victim.assassin
+
+    delete victim.target
+    victim.killed = Date.now()
+
     oneDied(gameID, game)
+    globalStats.kills++
 
     await Promise.all([gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'safely' })
@@ -503,7 +655,7 @@ Promise.all([
 
   router.post('/shuffle', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req, user)
+    const { game, gameID } = getGameFrom(req, user)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
 
@@ -515,6 +667,8 @@ Promise.all([
           type: 'shuffle',
           game: gameID,
           gameName: game.name,
+          target: target,
+          targetName: getUser(target).name,
           time: Date.now(),
           read: false
         })
