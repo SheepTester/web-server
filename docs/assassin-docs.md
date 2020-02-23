@@ -292,8 +292,13 @@ It can't be over 2k chars, but it can be empty.
     kills : Number,
     joined : Date
   }>,
-  state: State,
-  time: Date
+  state : State,
+  time : Date,
+  announcements : Array<{
+    message : String,
+    includeDead : Boolean,
+    time : Date
+  }>
 }
 ```
 

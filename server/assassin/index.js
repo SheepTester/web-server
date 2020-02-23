@@ -386,7 +386,7 @@ Promise.all([
 
   router.get('/game', (req, res) => {
     const { game } = getGameFrom(req)
-    const { creator, name, description, players, started, ended, created } = game
+    const { creator, name, description, players, started, ended, created, announcements = [] } = game
     res.send({
       creator,
       creatorName: getUser(creator).name,
@@ -404,7 +404,11 @@ Promise.all([
           joined
         })),
       state: started ? (ended ? 'ended' : 'started') : 'starting',
-      time: started ? ended || started : created
+      time: started ? ended || started : created,
+      // Doing it this way for now in case something needs to be censored later;
+      // hopefully this doesn't confuse me in the future.
+      announcements: announcements
+        .map(({ message, includeDead, time }) => ({ message, includeDead, time }))
     })
   })
 
@@ -681,13 +685,20 @@ Promise.all([
 
   router.post('/announce', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGame(req, user)
+    const { game, gameID } = getGameFrom(req, user)
     const { message = '', includeDead = true } = req.body
-    assert(game.ended, 'Game ended!')
+    assert(!game.ended, 'Game ended!')
     assert(typeof message === 'string', 'Message not string!')
     assert(message.length > 0, 'Empty message!')
     assert(message.length < 2000, 'Message cannot be over 2k chars long!')
 
+    const now = Date.now()
+    if (!game.announcements) game.announcements = []
+    game.announcements.push({
+      message,
+      includeDead,
+      time: now
+    })
     for (const [player, { target }] of Object.entries(game.players)) {
       if (includeDead || target) {
         notifications[player].splice(0, 0, {
@@ -695,13 +706,13 @@ Promise.all([
           game: gameID,
           gameName: game.name,
           message,
-          time: Date.now(),
+          time: now,
           read: false
         })
       }
     }
 
-    await notificationsDB.write()
+    await Promise.all([gamesDB.write(), notificationsDB.write()])
     res.send({ ok: 'probably' })
   }))
 
