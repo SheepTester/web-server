@@ -46,6 +46,9 @@ Promise.all([
     globalStats
   ] = databases.map(db => db.value())
 
+  // Maximum time between shuffles where shuffle notifications will merge
+  const MAX_SHUFFLE_NOTIF_TIME = 30 * 60 * 1000 // Half an hour
+
   function randomCode () {
     return randomWords(4).join(' ')
   }
@@ -205,20 +208,71 @@ Promise.all([
       globalStats.active--
       game.ended = Date.now()
       const winner = Object.keys(game.players).find(player => getPlayer(game, player).target)
-      const winnerName = getUser(winner).name
       game.winner = winner
-      for (const player of Object.keys(game.players)) {
-        notifications[player].splice(0, 0, {
-          type: 'game-ended',
-          game: gameID,
-          gameName: game.name,
-          winner,
-          winnerName,
-          time: Date.now(),
-          read: false
-        })
+      sendNotifToGame(gameID, {
+        type: 'game-ended',
+        winner,
+        time: Date.now()
+      }, true)
+    }
+  }
+
+  function sendNotif (user, notification) {
+    if (!notifications[user]) notifications[user] = []
+    notifications[user].splice(0, 0, notification)
+  }
+
+  function sendNotifToGame (gameID, notification, includeDead) {
+    const game = getGame(gameID)
+    if (!game.notifications) {
+      game.notifications = { _id: 0 }
+    }
+    const id = game.notifications._id++
+    game.notifications[id] = notification
+    const refNotif = { game: gameID, id }
+    for (const [player, { target }] of Object.entries(game.players)) {
+      if (includeDead || target) {
+        sendNotif(player, refNotif)
       }
     }
+  }
+
+  function extendNotif (notifObj) {
+    const game = notifObj.game
+    if (notifObj.id !== undefined) {
+      const gameNotifs = getGame(notifObj.game).notifications || {}
+      notifObj = gameNotifs[notifObj.id] || {}
+    }
+    // Shallow clone object
+    const notification = {
+      type: '',
+      time: 0,
+      read: !!notifObj.read,
+      ...notifObj
+    }
+    if (game) {
+      // This is a lazy way of adding the `game` property since notifications
+      // from game references do not have a game attribute themselves
+      notification.game = game
+      notification.gameName = getGame(game).name
+    }
+    switch (notification.type) {
+      case 'kicked-new-target':
+      case 'game-started':
+      case 'shuffle':
+        notification.targetName = getUser(notification.target).name
+        break
+      case 'killed-self':
+        notification.name = getUser(notification.user).name
+        break
+      case 'killed':
+        notification.name = getUser(notification.by).name
+        break
+      case 'game-ended':
+        notification.winnerName = getUser(notification.winner).name
+        break
+    }
+    return notification
   }
 
   // People can spam-create users
@@ -469,13 +523,11 @@ Promise.all([
       assert(has(users, target), 'Target doesn\'t exist!')
       targetUsername = target
       targetUser = users[target]
-      notifications[targetUsername].splice(0, 0, {
+      sendNotif(targetUsername, {
         type: 'kicked',
         game: gameID,
-        gameName: game.name,
         reason,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     } else {
       assert(!game.started, 'Game already started!')
@@ -490,17 +542,12 @@ Promise.all([
       getPlayer(game, targetPlayer.target).assassin = targetPlayer.assassin
       // I don't think it's necessary to regenerate the assassin's code.
       oneDied(gameID, game)
-      if (has(notifications, targetPlayer.assassin)) {
-        notifications[targetPlayer.assassin].splice(0, 0, {
-          type: 'kicked-new-target',
-          game: gameID,
-          gameName: game.name,
-          target: targetPlayer.target,
-          targetName: getUser(targetPlayer.target).name,
-          time: Date.now(),
-          read: false
-        })
-      }
+      sendNotif(targetPlayer.assassin, {
+        type: 'kicked-new-target',
+        game: gameID,
+        target: targetPlayer.target,
+        time: Date.now()
+      })
     }
     targetUser.games = targetUser.games.filter(game => game !== gameID)
     delete game.players[targetUsername]
@@ -520,15 +567,13 @@ Promise.all([
     game.alive = players.length
     game.started = Date.now()
     globalStats.active++
+    const now = Date.now()
     for (const [player, { target }] of Object.entries(game.players)) {
-      notifications[player].splice(0, 0, {
+      sendNotif(player, {
         type: 'game-started',
         game: gameID,
-        gameName: game.name,
-        target: target,
-        targetName: getUser(target).name,
-        time: Date.now(),
-        read: false
+        target,
+        time: now
       })
     }
 
@@ -595,7 +640,7 @@ Promise.all([
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
-    const { username, user } = verifySession(req.get('X-Session-ID'))
+    const { username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { self = false } = req.query
     assert(game.started, 'Game hasn\'t started!')
@@ -611,14 +656,11 @@ Promise.all([
       assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
       killer = game.players[player.assassin]
 
-      notifications[player.assassin].splice(0, 0, {
+      sendNotif(player.assassin, {
         type: 'killed-self',
         game: gameID,
-        gameName: game.name,
         user: username,
-        name: user.name,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     } else {
       killer = player
@@ -628,14 +670,11 @@ Promise.all([
       const { code } = req.body
       assert(code.toLowerCase().replace(/\s/g, '') === victim.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
 
-      notifications[player.target].splice(0, 0, {
+      sendNotif(player.target, {
         type: 'killed',
         game: gameID,
-        gameName: game.name,
         by: username,
-        name: user.name,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     }
 
@@ -661,16 +700,22 @@ Promise.all([
 
     shuffleTargets(Object.entries(game.players).filter(player => player[1].target))
 
+    const now = Date.now()
     for (const [player, { target }] of Object.entries(game.players)) {
       if (target) {
-        notifications[player].splice(0, 0, {
+        if (notifications[player]) {
+          const notifs = notifications[player]
+          // Delete recent consecutive shuffle notifications within 30 minutes
+          while (notifs[0] && notifs[0].type === 'shuffle' &&
+            notifs[0].game === gameID && notifs[0].time > now - MAX_SHUFFLE_NOTIF_TIME) {
+            notifs.splice(0, 1)
+          }
+        }
+        sendNotif(player, {
           type: 'shuffle',
           game: gameID,
-          gameName: game.name,
-          target: target,
-          targetName: getUser(target).name,
-          time: Date.now(),
-          read: false
+          target,
+          time: now
         })
       }
     }
@@ -703,7 +748,7 @@ Promise.all([
       unread++
     }
     res.send({
-      notifications: notifs.slice(from, from + limit),
+      notifications: notifs.slice(from, from + limit).map(extendNotif),
       end: notifs.length <= from + limit,
       unread
     })
