@@ -49,6 +49,20 @@ Promise.all([
   // Maximum time between shuffles where shuffle notifications will merge
   const MAX_SHUFFLE_NOTIF_TIME = 30 * 60 * 1000 // Half an hour
 
+  // TEMP: Clear adjacent shuffle notifications
+  for (const notifs of Object.values(notifications)) {
+    for (let i = 1; i < notifs.length - 1; i++) {
+      const notif = notifs[i - 1]
+      const nextNotif = notifs[i]
+      if (notif.type === 'shuffle' && nextNotif.type === 'shuffle' &&
+        notif.game === nextNotif.game) {
+        if (notif.time > nextNotif.time - MAX_SHUFFLE_NOTIF_TIME) {
+          notifs.splice(i--, 1)
+        }
+      }
+    }
+  }
+
   function randomCode () {
     return randomWords(4).join(' ')
   }
@@ -237,7 +251,7 @@ Promise.all([
     }
   }
 
-  function extendNotif (notifObj) {
+  function extendNotif ({ read = false, ...notifObj }) {
     const game = notifObj.game
     if (notifObj.id !== undefined) {
       const gameNotifs = getGame(notifObj.game).notifications || {}
@@ -247,7 +261,7 @@ Promise.all([
     const notification = {
       type: '',
       time: 0,
-      read: !!notifObj.read,
+      read,
       ...notifObj
     }
     if (game) {
