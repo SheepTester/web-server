@@ -231,10 +231,15 @@ With auth, deletes the specified game given that there's no one in it. Gives an 
 POST takes
 
 ```ts
-{ name : String, description : String, password : String }
+{
+  name : String,
+  description : String,
+  password : String,
+  joinDisabled : Boolean
+}
 ```
 
-and gives an ok.
+and gives an ok. (Each property is optional)
 
 GET returns
 
@@ -243,6 +248,7 @@ GET returns
   name : String,
   description : String,
   password : String,
+  joinDisabled : Boolean,
   players : Array<{
     username : String,
     name : String,
@@ -282,6 +288,7 @@ It can't be over 2k chars, but it can be empty.
   creatorName : String,
   name : String,
   description : String,
+  joinDisabled : Boolean,
   players : Array<{
     username : String,
     name : String,

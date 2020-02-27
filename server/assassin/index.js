@@ -120,7 +120,7 @@ Promise.all([
     }
   }
 
-  function gameSettings (game, { name, description, password }, init) {
+  function gameSettings (game, { name, description, password, joinDisabled }, init) {
     game.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name is not string!')
@@ -137,6 +137,10 @@ Promise.all([
       assert(typeof password === 'string', 'Passphrase is not string!')
       assert(password.length <= 200, 'Passphrase too long!')
       game.password = password
+    }
+    if (joinDisabled !== undefined) {
+      assert(typeof joinDisabled === 'boolean', 'disableJoining is not boolean!')
+      game.disableJoining = joinDisabled
     }
   }
 
@@ -420,11 +424,20 @@ Promise.all([
   router.get('/game-settings', (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req, user)
-    const { name, description, password, players, started, ended } = game
+    const {
+      name,
+      description,
+      password,
+      joinDisabled = false,
+      players,
+      started,
+      ended
+    } = game
     res.send({
       name,
       description,
       password,
+      joinDisabled,
       // Should targets and kill codes be available to the game creator?
       players: Object.entries(players)
         .map(([username, { kills, joined, killed }]) => ({
@@ -440,12 +453,22 @@ Promise.all([
 
   router.get('/game', (req, res) => {
     const { game } = getGameFrom(req)
-    const { creator, name, description, players, started, ended, created } = game
+    const {
+      creator,
+      name,
+      description,
+      players,
+      joinDisabled = false,
+      started,
+      ended,
+      created
+    } = game
     res.send({
       creator,
       creatorName: getUser(creator).name,
       name,
       description,
+      joinDisabled,
       players: Object.entries(players)
         .map(([username, { kills, killed, assassin, joined }]) => ({
           username,
@@ -500,6 +523,7 @@ Promise.all([
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { password } = req.body
+    assert(!game.joinDisabled, 'Joining has been disabled!')
     assert(!game.started, 'Game already started!')
     assert(!user.games.includes(gameID) && !game.players[username], 'User already in game!')
     // Case insensitive
