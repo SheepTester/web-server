@@ -139,8 +139,8 @@ Promise.all([
       game.password = password
     }
     if (joinDisabled !== undefined) {
-      assert(typeof joinDisabled === 'boolean', 'disableJoining is not boolean!')
-      game.disableJoining = joinDisabled
+      assert(typeof joinDisabled === 'boolean', 'joinDisabled is not boolean!')
+      game.joinDisabled = joinDisabled
     }
   }
 
