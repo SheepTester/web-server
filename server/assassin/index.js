@@ -233,10 +233,11 @@ Promise.all([
     }
     const id = game.notifications._id++
     game.notifications[id] = notification
-    const refNotif = { game: gameID, id }
     for (const [player, { target }] of Object.entries(game.players)) {
       if (includeDead || target) {
-        sendNotif(player, refNotif)
+        // Create a new reference per player; otherwise marking a notification
+        // as read will mark as read for everyone
+        sendNotif(player, { game: gameID, id })
       }
     }
   }
@@ -772,7 +773,15 @@ Promise.all([
       unread++
     }
     res.send({
-      notifications: notifs.slice(from, from + limit).map(extendNotif),
+      notifications: notifs.slice(from, from + limit)
+        .map((notif, i) => {
+          // In case something went wrong, we can just mark these broken-off
+          // unread notifications as read here.
+          if (from + i >= unread && !notif.read) {
+            notif.read = true
+          }
+          return extendNotif(notif)
+        }),
       end: notifs.length <= from + limit,
       unread
     })
