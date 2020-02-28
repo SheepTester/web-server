@@ -46,6 +46,24 @@ Promise.all([
     globalStats
   ] = databases.map(db => db.value())
 
+  // Autocreate the admin account with username "a" and password "temporary admin password"
+  // The admin should quickly change the password to something else.
+  if (!users.a) {
+    users.a = {
+      salt: "37da8bb2c7eafc8e644133a938873973afdd0664a2",
+      bio: "",
+      games: [],
+      myGames: [],
+      emailNotifs: false,
+      lastEdited: 1582853269298,
+      name: "",
+      password: "0becf0400e82a4b09360f3c707a89e183c055b31a46972ab47f265388147c759b9a99e4f9d01c132307365a99f27c0a34caf8a614c6f7f466b5dd53da988c2c9",
+      email: "",
+      isAdmin: true
+    }
+    notifications.a = []
+  }
+
   // Maximum time between shuffles where shuffle notifications will merge
   const MAX_SHUFFLE_NOTIF_TIME = 30 * 60 * 1000 // Half an hour
 
@@ -82,7 +100,7 @@ Promise.all([
     const { game: gameID } = req.query
     assert(has(games, gameID), 'This game does not exist.')
     const game = games[gameID]
-    if (authUser) {
+    if (authUser && !authUser.isAdmin) {
       assert(authUser.myGames.includes(gameID), 'You are not the creator of this game.')
     }
     return { game, gameID }
