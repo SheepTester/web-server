@@ -50,7 +50,7 @@ Promise.all([
   const MAX_SHUFFLE_NOTIF_TIME = 30 * 60 * 1000 // Half an hour
 
   function randomCode () {
-    return randomWords(4).join(' ')
+    return randomWords(3).join(' ')
   }
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
