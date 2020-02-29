@@ -71,7 +71,7 @@ Promise.all([
     return randomWords(3).join(' ')
   }
 
-  const SESSION_LENGTH = 1000//21 * 86400 * 1000 // 21 days
+  const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
     const sessionID = randomID()
     sessions[sessionID] = { user, end: Date.now() + SESSION_LENGTH }
