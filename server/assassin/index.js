@@ -71,7 +71,7 @@ Promise.all([
     return randomWords(3).join(' ')
   }
 
-  const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
+  const SESSION_LENGTH = 1000//21 * 86400 * 1000 // 21 days
   function createSession (user) {
     const sessionID = randomID()
     sessions[sessionID] = { user, end: Date.now() + SESSION_LENGTH }
@@ -81,14 +81,15 @@ Promise.all([
   function verifySession (sessionID) {
     const session = sessions[sessionID]
     assert(has(sessions, sessionID), 'You\'re not signed in. (Invalid session)')
-    if (Date.now() > session.end) {
-      delete sessions[sessionID]
-      // Don't write to database because:
-      // 1. It's not really that important here
-      // 2. This function doesn't return a promise so nothing can then/catch on it.
-      // Something else'll save it later.
-      throw new Error('Your session has expired. (Invalid session)')
-    }
+    // I've disabled making sessions expire.
+    // if (Date.now() > session.end) {
+    //   delete sessions[sessionID]
+    //   // Don't write to database because:
+    //   // 1. It's not really that important here
+    //   // 2. This function doesn't return a promise so nothing can then/catch on it.
+    //   // Something else'll save it later.
+    //   throw new Error('Your session has expired. (Invalid session)')
+    // }
     assert(has(users, session.user), 'Nonexistent user...? (Invalid session)')
     return {
       user: users[session.user],
