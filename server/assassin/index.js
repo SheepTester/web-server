@@ -207,9 +207,9 @@ Promise.all([
     return has(game.players, username) ? game.players[username] : emptyPlayer
   }
 
-  function shuffleTargets (players) {
+  function shuffleTargets (players, generateCode) {
     for (let i = players.length; i--;) {
-      players[i][1].code = randomCode() // (Re)Generate code
+      if (generateCode) players[i][1].code = randomCode() // (Re)Generate code
       if (i > 0) {
         const targetIndex = Math.floor(Math.random() * i)
         const target = players[targetIndex]
@@ -608,7 +608,7 @@ Promise.all([
 
     const players = Object.entries(game.players)
     assert(players.length >= 2, 'Not enough players!')
-    shuffleTargets(players)
+    shuffleTargets(players, true)
     game.alive = players.length
     game.started = Date.now()
     globalStats.active++
@@ -737,13 +737,29 @@ Promise.all([
     res.send({ ok: 'safely' })
   }))
 
+  router.post('/set-code', asyncHandler(async (req, res) => {
+    const { username } = verifySession(req.get('X-Session-ID'))
+    const { game, gameID } = getGameFrom(req)
+    assert(game.started, 'Game hasn\'t started!')
+    assert(!game.ended, 'Game has ended!')
+    assert(has(game.players, username), 'Not a player!')
+
+    const { code } = req.body
+    assert(typeof code === 'string', 'Code not a string!')
+    assert(code.length <= 100, 'Code too long!')
+    game.players[username].code = code
+
+    await gamesDB.write()
+    res.send({ ok: 'smoothly' })
+  }))
+
   router.post('/shuffle', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req, user)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
 
-    shuffleTargets(Object.entries(game.players).filter(player => player[1].target))
+    shuffleTargets(Object.entries(game.players).filter(player => player[1].target), false)
 
     const now = Date.now()
     for (const [player, { target }] of Object.entries(game.players)) {

@@ -425,7 +425,7 @@ If you add `?all=true`, then it'll return this instead:
 
 `others` includes games that haven't started or already ended, and it also includes ongoing games in which the player has died. `time`, again, depends on the state because it's meant for sorting by recentness. If the game hasn't started, it'll be the time the user joined the game. If the game has started, it'll return the player's death time (if the player hasn't died yet, it should be in `statuses`, but just in case for those buggy scenarios it falls back to the start time). If the game has ended, it'll return the end time.
 
-## POST `kill?game[GAME]&self=[true?]`
+## POST `kill?game=[GAME]&self=[true?]`
 
 With auth, you also need to give:
 
@@ -439,11 +439,21 @@ However, if `self` is true, then you don't need to give anything but auth, and i
 
 When a player is killed, the assassin's code is NOT regenerated.
 
-## POST `shuffle?game[GAME]`
+## POST `set-code?game=[GAME]`
+
+With auth, also give
+
+```ts
+{ code : String }
+```
+
+and it'll set your kill code for that game to the given code. Cannot be over 100 chars long.
+
+## POST `shuffle?game=[GAME]`
 
 With an ongoing game and auth, it'll do shufflances and ok.
 
-THAT IS, shuffling rearranges the targets for all alive players. Codes are also regenerated.
+THAT IS, shuffling rearranges the targets for all alive players. Codes are NOT regenerated.
 
 ## GET `stats`
 
