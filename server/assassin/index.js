@@ -579,23 +579,26 @@ Promise.all([
     }
     assert(has(game.players, targetUsername), 'User is not a player, no need to kick!')
 
+    targetUser.games = targetUser.games.filter(game => game !== gameID)
+    const targetPlayer = game.players[targetUsername]
+    delete game.players[targetUsername]
     if (game.started) {
-      const targetPlayer = game.players[targetUsername]
       // Redirect target
       // idk what the best thing to do is if for some reason these players don't exist
       getPlayer(game, targetPlayer.assassin).target = targetPlayer.target
       getPlayer(game, targetPlayer.target).assassin = targetPlayer.assassin
+      if (game.alive - 1 !== 1) {
+        // Only send notification if the game won't end after being kicked.
+        sendNotif(targetPlayer.assassin, {
+          type: 'kicked-new-target',
+          game: gameID,
+          target: targetPlayer.target,
+          time: Date.now()
+        })
+      }
       // I don't think it's necessary to regenerate the assassin's code.
       oneDied(gameID, game)
-      sendNotif(targetPlayer.assassin, {
-        type: 'kicked-new-target',
-        game: gameID,
-        target: targetPlayer.target,
-        time: Date.now()
-      })
     }
-    targetUser.games = targetUser.games.filter(game => game !== gameID)
-    delete game.players[targetUsername]
 
     await Promise.all([usersDB.write(), gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'if i didnt goof' })
