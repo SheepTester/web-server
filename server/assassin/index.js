@@ -50,15 +50,15 @@ Promise.all([
   // The admin should quickly change the password to something else.
   if (!users.a) {
     users.a = {
-      salt: "37da8bb2c7eafc8e644133a938873973afdd0664a2",
-      bio: "",
+      salt: '37da8bb2c7eafc8e644133a938873973afdd0664a2',
+      bio: '',
       games: [],
       myGames: [],
       emailNotifs: false,
       lastEdited: 1582853269298,
-      name: "",
-      password: "0becf0400e82a4b09360f3c707a89e183c055b31a46972ab47f265388147c759b9a99e4f9d01c132307365a99f27c0a34caf8a614c6f7f466b5dd53da988c2c9",
-      email: "",
+      name: '',
+      password: '0becf0400e82a4b09360f3c707a89e183c055b31a46972ab47f265388147c759b9a99e4f9d01c132307365a99f27c0a34caf8a614c6f7f466b5dd53da988c2c9',
+      email: '',
       isAdmin: true
     }
     notifications.a = []
@@ -739,7 +739,7 @@ Promise.all([
 
   router.post('/set-code', asyncHandler(async (req, res) => {
     const { username } = verifySession(req.get('X-Session-ID'))
-    const { game, gameID } = getGameFrom(req)
+    const { game } = getGameFrom(req)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game has ended!')
     assert(has(game.players, username), 'Not a player!')
