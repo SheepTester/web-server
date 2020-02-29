@@ -65,7 +65,7 @@ Three to twenty of: lowercase letters, digits, `_`, and `-`. It also can't be ta
 
 ### What's a good name?
 
-It just needs to exist. It's not that sophisticated. Also can't be over 50 characters.
+It just needs to exist. It's not that sophisticated. Also can't be over 50 characters. Both display names and game names have whitespace trimmed at ends.
 
 ### What's a good password?
 

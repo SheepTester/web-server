@@ -112,6 +112,7 @@ Promise.all([
     user.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
+      name = name.trim()
       assert(name.length > 0, 'Empty name!')
       assert(name.length <= 50, 'Name too long! (Sorry if your name is actually this long; this is to prevent abuse. I hope you\'ll understand.)')
       user.name = name
@@ -142,6 +143,7 @@ Promise.all([
     game.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name is not string!')
+      name = name.trim()
       assert(name.length > 0, 'Empty name!')
       assert(name.length <= 100, 'Name too long!')
       game.name = name
