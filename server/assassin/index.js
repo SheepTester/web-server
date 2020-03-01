@@ -854,18 +854,11 @@ Promise.all([
       includeDead,
       time: now
     })
-    for (const [player, { target }] of Object.entries(game.players)) {
-      if (includeDead || target) {
-        notifications[player].splice(0, 0, {
-          type: 'announcement',
-          game: gameID,
-          gameName: game.name,
-          message,
-          time: now,
-          read: false
-        })
-      }
-    }
+    sendNotifToGame(gameID, {
+      type: 'announcement',
+      message,
+      time: now
+    }, includeDead)
 
     await Promise.all([gamesDB.write(), notificationsDB.write()])
     res.send({ ok: 'probably' })
