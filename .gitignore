@@ -109,8 +109,9 @@ dist
 # Level databases
 db-*.json
 
-# Upgrade log thing
+# Fancy logs thing
 public/upgrade-log.txt
+public/error-log.txt
 
 # Greenlock config backups
 *.bak

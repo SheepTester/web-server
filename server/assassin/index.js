@@ -46,28 +46,52 @@ Promise.all([
     globalStats
   ] = databases.map(db => db.value())
 
+  // Autocreate the admin account with username "a" and password "temporary admin password"
+  // The admin should quickly change the password to something else.
+  if (!users.a) {
+    users.a = {
+      salt: '37da8bb2c7eafc8e644133a938873973afdd0664a2',
+      bio: '',
+      games: [],
+      myGames: [],
+      emailNotifs: false,
+      lastEdited: 1582853269298,
+      name: '',
+      password: '0becf0400e82a4b09360f3c707a89e183c055b31a46972ab47f265388147c759b9a99e4f9d01c132307365a99f27c0a34caf8a614c6f7f466b5dd53da988c2c9',
+      email: '',
+      isAdmin: true
+    }
+    notifications.a = []
+  }
+
+  // Maximum time between shuffles where shuffle notifications will merge
+  const MAX_SHUFFLE_NOTIF_TIME = 30 * 60 * 1000 // Half an hour
+
   function randomCode () {
-    return randomWords(4).join(' ')
+    return randomWords(3).join(' ')
   }
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
+    assert(has(users, user), 'User does not exist.')
     const sessionID = randomID()
     sessions[sessionID] = { user, end: Date.now() + SESSION_LENGTH }
     return sessionID
   }
 
   function verifySession (sessionID) {
-    const session = sessions[sessionID]
     assert(has(sessions, sessionID), 'You\'re not signed in. (Invalid session)')
-    if (Date.now() > session.end) {
-      delete sessions[sessionID]
-      // Don't write to database because:
-      // 1. It's not really that important here
-      // 2. This function doesn't return a promise so nothing can then/catch on it.
-      // Something else'll save it later.
-      throw new Error('Your session has expired. (Invalid session)')
-    }
+    const session = sessions[sessionID]
+    assert(!session.type, 'Session is not actually a session...? (Invalid session)')
+    // I've disabled making sessions expire.
+    // if (Date.now() > session.end) {
+    //   delete sessions[sessionID]
+    //   // Don't write to database because:
+    //   // 1. It's not really that important here
+    //   // 2. This function doesn't return a promise so nothing can then/catch on it.
+    //   // Something else'll save it later.
+    //   throw new Error('Your session has expired. (Invalid session)')
+    // }
     assert(has(users, session.user), 'Nonexistent user...? (Invalid session)')
     return {
       user: users[session.user],
@@ -75,11 +99,35 @@ Promise.all([
     }
   }
 
+  const RESET_LENGTH = 86400 * 1000 // 24 hours
+  function createReset (user) {
+    assert(has(users, user), 'User does not exist.')
+    const sessionID = randomID()
+    sessions[sessionID] = { user, end: Date.now() + RESET_LENGTH, type: 'reset' }
+    return sessionID
+  }
+
+  async function resetPassword (sessionID, password) {
+    assert(has(sessions, sessionID), 'This password reset ID does not exist!')
+    const session = sessions[sessionID]
+    assert(session.type === 'reset', 'Given password reset ID is not of correct type.')
+    delete sessions[sessionID]
+    if (Date.now() > session.end) {
+      throw new Error('The password reset form has expired (it lasts for 24 hours). Email sy24484@pausd.us for a new one.')
+    }
+    assert(has(users, session.user), 'Nonexistent user...?')
+    users[session.user].password = password
+    await userSettings(users[session.user], {
+      password
+    }, 'reset')
+    return session.user
+  }
+
   function getGameFrom (req, authUser) {
     const { game: gameID } = req.query
     assert(has(games, gameID), 'This game does not exist.')
     const game = games[gameID]
-    if (authUser) {
+    if (authUser && !authUser.isAdmin) {
       assert(authUser.myGames.includes(gameID), 'You are not the creator of this game.')
     }
     return { game, gameID }
@@ -87,24 +135,25 @@ Promise.all([
 
   const usernameRegex = /^[a-z0-9_-]{3,20}$/
 
-  async function userSettings (user, { name, password, oldPassword, email, bio }, init) {
+  async function userSettings (user, { name, password, oldPassword, email, bio }, mode) {
     user.lastEdited = Date.now()
-    if (init || name !== undefined) {
+    if (mode === 'init' || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
+      name = name.trim()
       assert(name.length > 0, 'Empty name!')
       assert(name.length <= 50, 'Name too long! (Sorry if your name is actually this long; this is to prevent abuse. I hope you\'ll understand.)')
       user.name = name
     }
-    if (init || password !== undefined) {
+    if (mode === 'init' || password !== undefined) {
       assert(goodPassword(password), 'Tasteless password!')
       const { salt, password: oldHash } = user
-      if (!init) {
+      if (mode !== 'init' && mode !== 'reset') {
         // Verify that user knows old password
         assert(await hashPassword(oldPassword, salt) === oldHash, 'The old password is incorrect.')
       }
       user.password = await hashPassword(password, salt)
     }
-    if (init || email !== undefined) {
+    if (mode === 'init' || email !== undefined) {
       assert(typeof email === 'string', 'Email not string!')
       assert(email.length > 0, 'Empty email!')
       assert(email.length <= 320, 'Email too long!')
@@ -117,10 +166,11 @@ Promise.all([
     }
   }
 
-  function gameSettings (game, { name, description, password }, init) {
+  function gameSettings (game, { name, description, password, joinDisabled }, init) {
     game.lastEdited = Date.now()
     if (init || name !== undefined) {
       assert(typeof name === 'string', 'Name is not string!')
+      name = name.trim()
       assert(name.length > 0, 'Empty name!')
       assert(name.length <= 100, 'Name too long!')
       game.name = name
@@ -134,6 +184,10 @@ Promise.all([
       assert(typeof password === 'string', 'Passphrase is not string!')
       assert(password.length <= 200, 'Passphrase too long!')
       game.password = password
+    }
+    if (joinDisabled !== undefined) {
+      assert(typeof joinDisabled === 'boolean', 'joinDisabled is not boolean!')
+      game.joinDisabled = joinDisabled
     }
   }
 
@@ -180,9 +234,9 @@ Promise.all([
     return has(game.players, username) ? game.players[username] : emptyPlayer
   }
 
-  function shuffleTargets (players) {
+  function shuffleTargets (players, generateCode) {
     for (let i = players.length; i--;) {
-      players[i][1].code = randomCode() // (Re)Generate code
+      if (generateCode) players[i][1].code = randomCode() // (Re)Generate code
       if (i > 0) {
         const targetIndex = Math.floor(Math.random() * i)
         const target = players[targetIndex]
@@ -205,20 +259,72 @@ Promise.all([
       globalStats.active--
       game.ended = Date.now()
       const winner = Object.keys(game.players).find(player => getPlayer(game, player).target)
-      const winnerName = getUser(winner).name
       game.winner = winner
-      for (const player of Object.keys(game.players)) {
-        notifications[player].splice(0, 0, {
-          type: 'game-ended',
-          game: gameID,
-          gameName: game.name,
-          winner,
-          winnerName,
-          time: Date.now(),
-          read: false
-        })
+      sendNotifToGame(gameID, {
+        type: 'game-ended',
+        winner,
+        time: Date.now()
+      }, true)
+    }
+  }
+
+  function sendNotif (user, notification) {
+    if (!notifications[user]) notifications[user] = []
+    notifications[user].splice(0, 0, notification)
+  }
+
+  function sendNotifToGame (gameID, notification, includeDead) {
+    const game = getGame(gameID)
+    if (!game.notifications) {
+      game.notifications = { _id: 0 }
+    }
+    const id = game.notifications._id++
+    game.notifications[id] = notification
+    for (const [player, { target }] of Object.entries(game.players)) {
+      if (includeDead || target) {
+        // Create a new reference per player; otherwise marking a notification
+        // as read will mark as read for everyone
+        sendNotif(player, { game: gameID, id })
       }
     }
+  }
+
+  function extendNotif ({ read = false, ...notifObj }) {
+    const game = notifObj.game
+    if (notifObj.id !== undefined) {
+      const gameNotifs = getGame(notifObj.game).notifications || {}
+      notifObj = gameNotifs[notifObj.id] || {}
+    }
+    // Shallow clone object
+    const notification = {
+      type: '',
+      time: 0,
+      read,
+      ...notifObj
+    }
+    if (game) {
+      // This is a lazy way of adding the `game` property since notifications
+      // from game references do not have a game attribute themselves
+      notification.game = game
+      notification.gameName = getGame(game).name
+    }
+    switch (notification.type) {
+      case 'kicked-new-target':
+      case 'game-started':
+      case 'shuffle':
+        notification.targetName = getUser(notification.target).name
+        break
+      case 'killed-self':
+        notification.name = getUser(notification.user).name
+        break
+      case 'killed':
+        notification.name = getUser(notification.by).name
+        break
+      case 'game-ended':
+        notification.winnerName = getUser(notification.winner).name
+        break
+    }
+    return notification
   }
 
   // People can spam-create users
@@ -238,7 +344,7 @@ Promise.all([
       myGames: [],
       emailNotifs: false
     }
-    await userSettings(user, req.body, true)
+    await userSettings(user, req.body, 'init')
     users[username] = user
     notifications[username] = []
 
@@ -266,7 +372,7 @@ Promise.all([
 
   router.post('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    await userSettings(user, req.body, false)
+    await userSettings(user, req.body, 'edit')
     await usersDB.write()
     res.send({ ok: 'if i remember' })
   }))
@@ -277,6 +383,24 @@ Promise.all([
     const { name, email, bio } = user
     res.send({ name, email, bio })
   })
+
+  router.post('/make-reset', asyncHandler(async (req, res) => {
+    const { user } = verifySession(req.get('X-Session-ID'))
+    assert(user.isAdmin, 'Not admin!')
+    const { username } = req.body
+    assert(typeof username === 'string', 'Username not string!')
+    const id = createReset(username)
+    await sessionsDB.write()
+    res.send({ id })
+  }))
+
+  router.post('/reset-password', asyncHandler(async (req, res) => {
+    const { id, password } = req.body
+    const username = await resetPassword(id, password)
+    const session = createSession(username)
+    await Promise.all([sessionsDB.write(), usersDB.write()])
+    res.send({ session, username })
+  }))
 
   // Public user data (for profiles)
   router.get('/user', (req, res) => {
@@ -366,11 +490,20 @@ Promise.all([
   router.get('/game-settings', (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req, user)
-    const { name, description, password, players, started, ended } = game
+    const {
+      name,
+      description,
+      password,
+      joinDisabled = false,
+      players,
+      started,
+      ended
+    } = game
     res.send({
       name,
       description,
       password,
+      joinDisabled,
       // Should targets and kill codes be available to the game creator?
       players: Object.entries(players)
         .map(([username, { kills, joined, killed }]) => ({
@@ -386,12 +519,23 @@ Promise.all([
 
   router.get('/game', (req, res) => {
     const { game } = getGameFrom(req)
-    const { creator, name, description, players, started, ended, created, announcements = [] } = game
+    const {
+      creator,
+      name,
+      description,
+      players,
+      joinDisabled = false,
+      started,
+      ended,
+      created,
+      announcements = []
+    } = game
     res.send({
       creator,
       creatorName: getUser(creator).name,
       name,
       description,
+      joinDisabled,
       players: Object.entries(players)
         .map(([username, { kills, killed, assassin, joined }]) => ({
           username,
@@ -450,6 +594,7 @@ Promise.all([
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { password } = req.body
+    assert(!game.joinDisabled, 'Joining has been disabled!')
     assert(!game.started, 'Game already started!')
     assert(!user.games.includes(gameID) && !game.players[username], 'User already in game!')
     // Case insensitive
@@ -473,41 +618,37 @@ Promise.all([
       assert(has(users, target), 'Target doesn\'t exist!')
       targetUsername = target
       targetUser = users[target]
-      notifications[targetUsername].splice(0, 0, {
+      sendNotif(targetUsername, {
         type: 'kicked',
         game: gameID,
-        gameName: game.name,
         reason,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     } else {
       assert(!game.started, 'Game already started!')
     }
     assert(has(game.players, targetUsername), 'User is not a player, no need to kick!')
 
+    targetUser.games = targetUser.games.filter(game => game !== gameID)
+    const targetPlayer = game.players[targetUsername]
+    delete game.players[targetUsername]
     if (game.started) {
-      const targetPlayer = game.players[targetUsername]
       // Redirect target
       // idk what the best thing to do is if for some reason these players don't exist
       getPlayer(game, targetPlayer.assassin).target = targetPlayer.target
       getPlayer(game, targetPlayer.target).assassin = targetPlayer.assassin
-      // I don't think it's necessary to regenerate the assassin's code.
-      oneDied(gameID, game)
-      if (has(notifications, targetPlayer.assassin)) {
-        notifications[targetPlayer.assassin].splice(0, 0, {
+      if (game.alive - 1 !== 1) {
+        // Only send notification if the game won't end after being kicked.
+        sendNotif(targetPlayer.assassin, {
           type: 'kicked-new-target',
           game: gameID,
-          gameName: game.name,
           target: targetPlayer.target,
-          targetName: getUser(targetPlayer.target).name,
-          time: Date.now(),
-          read: false
+          time: Date.now()
         })
       }
+      // I don't think it's necessary to regenerate the assassin's code.
+      oneDied(gameID, game)
     }
-    targetUser.games = targetUser.games.filter(game => game !== gameID)
-    delete game.players[targetUsername]
 
     await Promise.all([usersDB.write(), gamesDB.write(), globalStatsDB.write(), notificationsDB.write()])
     res.send({ ok: 'if i didnt goof' })
@@ -520,19 +661,17 @@ Promise.all([
 
     const players = Object.entries(game.players)
     assert(players.length >= 2, 'Not enough players!')
-    shuffleTargets(players)
+    shuffleTargets(players, true)
     game.alive = players.length
     game.started = Date.now()
     globalStats.active++
+    const now = Date.now()
     for (const [player, { target }] of Object.entries(game.players)) {
-      notifications[player].splice(0, 0, {
+      sendNotif(player, {
         type: 'game-started',
         game: gameID,
-        gameName: game.name,
-        target: target,
-        targetName: getUser(target).name,
-        time: Date.now(),
-        read: false
+        target,
+        time: now
       })
     }
 
@@ -599,7 +738,7 @@ Promise.all([
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
-    const { username, user } = verifySession(req.get('X-Session-ID'))
+    const { username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { self = false } = req.query
     assert(game.started, 'Game hasn\'t started!')
@@ -615,14 +754,11 @@ Promise.all([
       assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
       killer = game.players[player.assassin]
 
-      notifications[player.assassin].splice(0, 0, {
+      sendNotif(player.assassin, {
         type: 'killed-self',
         game: gameID,
-        gameName: game.name,
         user: username,
-        name: user.name,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     } else {
       killer = player
@@ -632,14 +768,11 @@ Promise.all([
       const { code } = req.body
       assert(code.toLowerCase().replace(/\s/g, '') === victim.code.toLowerCase().replace(/\s/g, ''), 'The given code is incorrect. Trying checking the spelling again.')
 
-      notifications[player.target].splice(0, 0, {
+      sendNotif(player.target, {
         type: 'killed',
         game: gameID,
-        gameName: game.name,
         by: username,
-        name: user.name,
-        time: Date.now(),
-        read: false
+        time: Date.now()
       })
     }
 
@@ -657,24 +790,46 @@ Promise.all([
     res.send({ ok: 'safely' })
   }))
 
+  router.post('/set-code', asyncHandler(async (req, res) => {
+    const { username } = verifySession(req.get('X-Session-ID'))
+    const { game } = getGameFrom(req)
+    assert(game.started, 'Game hasn\'t started!')
+    assert(!game.ended, 'Game has ended!')
+    assert(has(game.players, username), 'Not a player!')
+
+    const { code } = req.body
+    assert(typeof code === 'string', 'Code not a string!')
+    assert(code.length <= 100, 'Code too long!')
+    game.players[username].code = code
+
+    await gamesDB.write()
+    res.send({ ok: 'smoothly' })
+  }))
+
   router.post('/shuffle', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req, user)
     assert(game.started, 'Game hasn\'t started!')
     assert(!game.ended, 'Game ended!')
 
-    shuffleTargets(Object.entries(game.players).filter(player => player[1].target))
+    shuffleTargets(Object.entries(game.players).filter(player => player[1].target), false)
 
+    const now = Date.now()
     for (const [player, { target }] of Object.entries(game.players)) {
       if (target) {
-        notifications[player].splice(0, 0, {
+        if (notifications[player]) {
+          const notifs = notifications[player]
+          // Delete recent consecutive shuffle notifications within 30 minutes
+          while (notifs[0] && notifs[0].type === 'shuffle' &&
+            notifs[0].game === gameID && notifs[0].time > now - MAX_SHUFFLE_NOTIF_TIME) {
+            notifs.splice(0, 1)
+          }
+        }
+        sendNotif(player, {
           type: 'shuffle',
           game: gameID,
-          gameName: game.name,
-          target: target,
-          targetName: getUser(target).name,
-          time: Date.now(),
-          read: false
+          target,
+          time: now
         })
       }
     }
@@ -740,7 +895,15 @@ Promise.all([
       unread++
     }
     res.send({
-      notifications: notifs.slice(from, from + limit),
+      notifications: notifs.slice(from, from + limit)
+        .map((notif, i) => {
+          // In case something went wrong, we can just mark these broken-off
+          // unread notifications as read here.
+          if (from + i >= unread && !notif.read) {
+            notif.read = true
+          }
+          return extendNotif(notif)
+        }),
       end: notifs.length <= from + limit,
       unread
     })

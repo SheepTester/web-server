@@ -1,6 +1,8 @@
 const express = require('express')
 const cors = require('cors')
 
+const fs = require('fs')
+const path = require('path')
 const assert = require('assert')
 const { exec } = require('child_process')
 const { asyncHandler, hashPassword } = require('./utils.js')
@@ -27,7 +29,7 @@ app.post('/restart', asyncHandler(async (req, res) => {
   } else if (await hashPassword(req.body.password, restartSalt) === restartHash) {
     exec('npm run serve:update > public/upgrade-log.txt', err => {
       if (err) {
-        res.status(500).end()
+        throw err
       } else {
         res.end(app.stop)
       }
@@ -56,6 +58,8 @@ app.use((req, res, next) => {
   }
 })
 
+// https://stackoverflow.com/a/43370201
+const errorStream = fs.createWriteStream(path.resolve(__dirname, '../public/error-log.txt'), { flags: 'a' })
 app.use((err, req, res, next) => {
   if (err instanceof assert.AssertionError) {
     if (req.xhr || req.method !== 'GET') {
@@ -69,6 +73,7 @@ app.use((err, req, res, next) => {
     } else {
       res.status(500).render('500', { error: err.stack })
     }
+    errorStream.write(new Date().toString() + '\n' + err.stack + '\n\n')
   }
 })
 

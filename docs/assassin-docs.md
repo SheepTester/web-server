@@ -65,7 +65,7 @@ Three to twenty of: lowercase letters, digits, `_`, and `-`. It also can't be ta
 
 ### What's a good name?
 
-It just needs to exist. It's not that sophisticated. Also can't be over 50 characters.
+It just needs to exist. It's not that sophisticated. Also can't be over 50 characters. Both display names and game names have whitespace trimmed at ends.
 
 ### What's a good password?
 
@@ -144,6 +144,36 @@ GET returns
 ```
 
 This requires authentication.
+
+## POST `make-reset`
+
+With auth to an admin account, give
+
+```ts
+{ username : String }
+```
+
+and it'll return
+
+```ts
+{ id : String }
+```
+
+## POST `reset-password`
+
+Given
+
+```ts
+{ id : String, password : String }
+```
+
+it'll reset the password with which the given reset ID is associated. Returns
+
+```ts
+{ session : String, username : String }
+```
+
+(No auth needed, duh.)
 
 ## GET `user?user=[username]`
 
@@ -231,10 +261,15 @@ With auth, deletes the specified game given that there's no one in it. Gives an 
 POST takes
 
 ```ts
-{ name : String, description : String, password : String }
+{
+  name : String,
+  description : String,
+  password : String,
+  joinDisabled : Boolean
+}
 ```
 
-and gives an ok.
+and gives an ok. (Each property is optional)
 
 GET returns
 
@@ -243,6 +278,7 @@ GET returns
   name : String,
   description : String,
   password : String,
+  joinDisabled : Boolean,
   players : Array<{
     username : String,
     name : String,
@@ -282,6 +318,7 @@ It can't be over 2k chars, but it can be empty.
   creatorName : String,
   name : String,
   description : String,
+  joinDisabled : Boolean,
   players : Array<{
     username : String,
     name : String,
@@ -437,11 +474,21 @@ However, if `self` is true, then you don't need to give anything but auth, and i
 
 When a player is killed, the assassin's code is NOT regenerated.
 
+## POST `set-code?game=[GAME]`
+
+With auth, also give
+
+```ts
+{ code : String }
+```
+
+and it'll set your kill code for that game to the given code. Cannot be over 100 chars long.
+
 ## POST `shuffle?game=[GAME]`
 
 With an ongoing game and auth, it'll do shufflances and ok.
 
-THAT IS, shuffling rearranges the targets for all alive players. Codes are also regenerated.
+THAT IS, shuffling rearranges the targets for all alive players. Codes are NOT regenerated.
 
 ## POST `announce?game=[GAME]`
 
