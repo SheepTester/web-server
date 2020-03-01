@@ -73,14 +73,16 @@ Promise.all([
 
   const SESSION_LENGTH = 21 * 86400 * 1000 // 21 days
   function createSession (user) {
+    assert(has(users, user), 'User does not exist.')
     const sessionID = randomID()
     sessions[sessionID] = { user, end: Date.now() + SESSION_LENGTH }
     return sessionID
   }
 
   function verifySession (sessionID) {
-    const session = sessions[sessionID]
     assert(has(sessions, sessionID), 'You\'re not signed in. (Invalid session)')
+    const session = sessions[sessionID]
+    assert(!session.type, 'Session is not actually a session...? (Invalid session)')
     // I've disabled making sessions expire.
     // if (Date.now() > session.end) {
     //   delete sessions[sessionID]
@@ -97,6 +99,30 @@ Promise.all([
     }
   }
 
+  const RESET_LENGTH = 86400 * 1000 // 24 hours
+  function createReset (user) {
+    assert(has(users, user), 'User does not exist.')
+    const sessionID = randomID()
+    sessions[sessionID] = { user, end: Date.now() + RESET_LENGTH, type: 'reset' }
+    return sessionID
+  }
+
+  async function resetPassword (sessionID, password) {
+    assert(has(sessions, sessionID), 'This password reset ID does not exist!')
+    const session = sessions[sessionID]
+    assert(session.type === 'reset', 'Given password reset ID is not of correct type.')
+    delete sessions[sessionID]
+    if (Date.now() > session.end) {
+      throw new Error('The password reset form has expired (it lasts for 24 hours). Email sy24484@pausd.us for a new one.')
+    }
+    assert(has(users, session.user), 'Nonexistent user...?')
+    users[session.user].password = password
+    await userSettings(users[session.user], {
+      password
+    }, 'reset')
+    return session.user
+  }
+
   function getGameFrom (req, authUser) {
     const { game: gameID } = req.query
     assert(has(games, gameID), 'This game does not exist.')
@@ -109,25 +135,25 @@ Promise.all([
 
   const usernameRegex = /^[a-z0-9_-]{3,20}$/
 
-  async function userSettings (user, { name, password, oldPassword, email, bio }, init) {
+  async function userSettings (user, { name, password, oldPassword, email, bio }, mode) {
     user.lastEdited = Date.now()
-    if (init || name !== undefined) {
+    if (mode === 'init' || name !== undefined) {
       assert(typeof name === 'string', 'Name not string!')
       name = name.trim()
       assert(name.length > 0, 'Empty name!')
       assert(name.length <= 50, 'Name too long! (Sorry if your name is actually this long; this is to prevent abuse. I hope you\'ll understand.)')
       user.name = name
     }
-    if (init || password !== undefined) {
+    if (mode === 'init' || password !== undefined) {
       assert(goodPassword(password), 'Tasteless password!')
       const { salt, password: oldHash } = user
-      if (!init) {
+      if (mode !== 'init' && mode !== 'reset') {
         // Verify that user knows old password
         assert(await hashPassword(oldPassword, salt) === oldHash, 'The old password is incorrect.')
       }
       user.password = await hashPassword(password, salt)
     }
-    if (init || email !== undefined) {
+    if (mode === 'init' || email !== undefined) {
       assert(typeof email === 'string', 'Email not string!')
       assert(email.length > 0, 'Empty email!')
       assert(email.length <= 320, 'Email too long!')
@@ -318,7 +344,7 @@ Promise.all([
       myGames: [],
       emailNotifs: false
     }
-    await userSettings(user, req.body, true)
+    await userSettings(user, req.body, 'init')
     users[username] = user
     notifications[username] = []
 
@@ -346,7 +372,7 @@ Promise.all([
 
   router.post('/user-settings', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
-    await userSettings(user, req.body, false)
+    await userSettings(user, req.body, 'edit')
     await usersDB.write()
     res.send({ ok: 'if i remember' })
   }))
@@ -357,6 +383,24 @@ Promise.all([
     const { name, email, bio } = user
     res.send({ name, email, bio })
   })
+
+  router.post('/make-reset', asyncHandler(async (req, res) => {
+    const { user } = verifySession(req.get('X-Session-ID'))
+    assert(user.isAdmin, 'Not admin!')
+    const { username } = req.body
+    assert(typeof username === 'string', 'Username not string!')
+    const id = createReset(username)
+    await sessionsDB.write()
+    res.send({ id })
+  }))
+
+  router.post('/reset-password', asyncHandler(async (req, res) => {
+    const { id, password } = req.body
+    const username = await resetPassword(id, password)
+    const session = createSession(username)
+    await Promise.all([sessionsDB.write(), usersDB.write()])
+    res.send({ session, username })
+  }))
 
   // Public user data (for profiles)
   router.get('/user', (req, res) => {

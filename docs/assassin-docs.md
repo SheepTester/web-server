@@ -145,6 +145,36 @@ GET returns
 
 This requires authentication.
 
+## POST `make-reset`
+
+With auth to an admin account, give
+
+```ts
+{ username : String }
+```
+
+and it'll return
+
+```ts
+{ id : String }
+```
+
+## POST `reset-password`
+
+Given
+
+```ts
+{ id : String, password : String }
+```
+
+it'll reset the password with which the given reset ID is associated. Returns
+
+```ts
+{ session : String, username : String }
+```
+
+(No auth needed, duh.)
+
 ## GET `user?user=[username]`
 
 Returns
