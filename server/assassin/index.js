@@ -419,8 +419,8 @@ Promise.all([
   })
 
   router.post('/reset-password', asyncHandler(async (req, res) => {
-    const { id, password, email, username } = req.body
-    const username = await resetPassword(id, { password, email, username })
+    const { id, password, email, username: verifyUsername } = req.body
+    const username = await resetPassword(id, { password, email, username: verifyUsername })
     const session = createSession(username)
     await Promise.all([sessionsDB.write(), usersDB.write()])
     res.send({ session, username })
