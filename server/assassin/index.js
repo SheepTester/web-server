@@ -9,6 +9,8 @@ const path = require('path')
 const low = require('lowdb')
 const FileAsync = require('lowdb/adapters/FileAsync')
 
+const email = require('./email-templates.js')
+
 function goodPassword (password) {
   return typeof password === 'string' &&
     password.length >= 1 &&
@@ -389,6 +391,13 @@ Promise.all([
     const { name, email, bio } = user
     res.send({ name, email, bio })
   })
+
+  router.post('/forgot-password', asyncHandler(async (req, res) => {
+    const { username } = req.body
+    const resetID = createReset(username, [])
+    await email.mail(users[username].email, email.resetPassword({ username, resetID }))
+    res.send({ ok: 'spamlessly' })
+  }))
 
   router.post('/make-reset', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
