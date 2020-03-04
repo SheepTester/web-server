@@ -150,7 +150,9 @@ This requires authentication.
 With auth to an admin account, give
 
 ```ts
-{ username : String }
+Requirement = 'username' | 'email'
+
+{ username : String, requires : Array<Requirement> }
 ```
 
 and it'll return
@@ -159,15 +161,25 @@ and it'll return
 { id : String }
 ```
 
+`requires` is an array of what also needs to be given to verify their identity.
+
+## GET `reset-password-info?id=[ID]`
+
+Returns
+
+```ts
+{ exists : Boolean, requires : Array<Requirement> }
+```
+
 ## POST `reset-password`
 
 Given
 
 ```ts
-{ id : String, password : String }
+{ id : String, password : String, email? : String, username? : String }
 ```
 
-it'll reset the password with which the given reset ID is associated. Returns
+it'll reset the password with which the given reset ID is associated. If `email` or `username` are required, you'll have to give them too. Returns
 
 ```ts
 { session : String, username : String }

@@ -100,23 +100,29 @@ Promise.all([
   }
 
   const RESET_LENGTH = 86400 * 1000 // 24 hours
-  function createReset (user) {
+  function createReset (user, requires) {
     assert(has(users, user), 'User does not exist.')
     const sessionID = randomID()
-    sessions[sessionID] = { user, end: Date.now() + RESET_LENGTH, type: 'reset' }
+    sessions[sessionID] = { user, end: Date.now() + RESET_LENGTH, type: 'reset', requires }
     return sessionID
   }
 
-  async function resetPassword (sessionID, password) {
+  async function resetPassword (sessionID, { password, username, email }) {
     assert(has(sessions, sessionID), 'This password reset ID does not exist!')
     const session = sessions[sessionID]
     assert(session.type === 'reset', 'Given password reset ID is not of correct type.')
+    assert(has(users, session.user), 'Nonexistent user...?')
+    const user = users[session.user]
+    if (session.requires && session.requires.includes('email')) {
+      assert(email === user.email, 'The given email does not match the email with which you signed up.')
+    }
+    if (session.requires && session.requires.includes('username')) {
+      assert(username === session.user, 'The given username is not your username.')
+    }
     delete sessions[sessionID]
     if (Date.now() > session.end) {
       throw new Error('The password reset form has expired (it lasts for 24 hours). Email sy24484@pausd.us for a new one.')
     }
-    assert(has(users, session.user), 'Nonexistent user...?')
-    users[session.user].password = password
     await userSettings(users[session.user], {
       password
     }, 'reset')
@@ -387,16 +393,25 @@ Promise.all([
   router.post('/make-reset', asyncHandler(async (req, res) => {
     const { user } = verifySession(req.get('X-Session-ID'))
     assert(user.isAdmin, 'Not admin!')
-    const { username } = req.body
+    const { username, requires = [] } = req.body
     assert(typeof username === 'string', 'Username not string!')
-    const id = createReset(username)
+    const id = createReset(username, requires)
     await sessionsDB.write()
     res.send({ id })
   }))
 
+  router.get('/reset-password-info', (req, res) => {
+    const { id } = req.query
+    if (has(sessions, id) && sessions[id].type === 'reset') {
+      res.send({ exists: true, requires: sessions[id].requires || [] })
+    } else {
+      res.send({ exists: false, requires: [] })
+    }
+  })
+
   router.post('/reset-password', asyncHandler(async (req, res) => {
-    const { id, password } = req.body
-    const username = await resetPassword(id, password)
+    const { id, password, email, username } = req.body
+    const username = await resetPassword(id, { password, email, username })
     const session = createSession(username)
     await Promise.all([sessionsDB.write(), usersDB.write()])
     res.send({ session, username })
