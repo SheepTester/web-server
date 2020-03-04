@@ -113,5 +113,8 @@ db-*.json
 public/upgrade-log.txt
 public/error-log.txt
 
+# Gmail credentials
+gmail.json
+
 # Greenlock config backups
 *.bak
