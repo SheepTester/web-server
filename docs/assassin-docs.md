@@ -145,6 +145,16 @@ GET returns
 
 This requires authentication.
 
+## POST `forgot-password`
+
+Given
+
+```ts
+{ username : String }
+```
+
+it'll send a password reset email to the user.
+
 ## POST `make-reset`
 
 With auth to an admin account, give
