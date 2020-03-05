@@ -530,12 +530,13 @@ Promise.all([
       joinDisabled,
       // Should targets and kill codes be available to the game creator?
       players: Object.entries(players)
-        .map(([username, { kills, joined, killed }]) => ({
+        .map(([username, { kills, joined, killed, code }]) => ({
           username,
           name: getUser(username).name,
           alive: !killed,
           kills,
-          joined
+          joined,
+          code
         })),
       state: started ? (ended ? 'ended' : 'started') : 'starting'
     })

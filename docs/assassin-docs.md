@@ -306,7 +306,8 @@ GET returns
     name : String,
     alive : Boolean,
     kills : Number,
-    joined : Date
+    joined : Date,
+    code : String
   }>,
   state: State
 }
