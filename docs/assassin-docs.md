@@ -140,7 +140,7 @@ If `password` isn't given then you don't need to give `oldPassword` either
 GET returns
 
 ```ts
-{ name : String, email : String, bio : String }
+{ name : String, email : String, bio : String, code : String }
 ```
 
 This requires authentication.
