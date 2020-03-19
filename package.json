@@ -12,10 +12,7 @@
   },
   "author": "SheepTester",
   "license": "MIT",
-  "devDependencies": {
-    "snazzy": "^8.0.0",
-    "standard": "^14.3.3"
-  },
+  "devDependencies": {},
   "dependencies": {
     "cors": "^2.8.5",
     "ejs": "^3.0.1",
