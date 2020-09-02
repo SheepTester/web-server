@@ -15,11 +15,11 @@
   "devDependencies": {},
   "dependencies": {
     "cors": "^2.8.5",
-    "ejs": "^3.0.1",
+    "ejs": "^3.1.5",
     "express": "^4.17.1",
     "forever-monitor": "^2.0.0",
     "greenlock-express": "^4.0.3",
     "lowdb": "^1.0.0",
-    "nodemailer": "^6.4.5"
+    "nodemailer": "^6.4.11"
   }
 }
