@@ -387,9 +387,9 @@ Promise.all([
 
   // Authenticated user data (for user options)
   router.get('/user-settings', (req, res) => {
-    const { user } = verifySession(req.get('X-Session-ID'))
+    const { user, username } = verifySession(req.get('X-Session-ID'))
     const { name, email, bio } = user
-    res.send({ name, email, bio })
+    res.send({ username, name, email, bio })
   })
 
   router.post('/forgot-password', asyncHandler(async (req, res) => {
