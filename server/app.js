@@ -47,6 +47,8 @@ app.use('/note', require('./note/index.js'))
 
 app.use('/counter', require('./counter/index.js'))
 
+app.use('/colour', require('./colour/index.js'))
+
 app.use((req, res, next) => {
   if (req.xhr || req.method !== 'GET') {
     res.status(404).send({ url: req.originalUrl, wucky: 'do not know what to do' })

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>#<%= colour %></title>
+    <meta name="description" content="Learn about the colour #<%= colour %>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#<%= colour %>">
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background-color: #<%= colour %>;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji',
+          'Segoe UI Emoji', 'Segoe UI Symbol';
+        font-size: 4rem;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+
+        color: white;
+        text-shadow: 0 0 10px black;
+      }
+    </style>
+  </head>
+  <body>
+    <p>#<%= colour %></p>
+  </body>
+</html>

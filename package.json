@@ -10,6 +10,10 @@
     "start": "node server/app.js",
     "test": "standard --verbose | snazzy"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SheepTester/web-server.git"
+  },
   "author": "SheepTester",
   "license": "MIT",
   "devDependencies": {},
