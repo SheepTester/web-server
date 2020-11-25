@@ -7,6 +7,6 @@ const errorStream = fs.createWriteStream(
   { flags: 'a' }
 )
 
-module.exports = function logError (err) {
-  errorStream.write(new Date().toString() + '\n' + err.stack + '\n\n')
+module.exports = function logError (err, url = 'somewhere') {
+  errorStream.write(`${new Date().toString()} at ${url}\n${err.stack}\n\n`)
 }

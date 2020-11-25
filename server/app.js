@@ -109,7 +109,7 @@ app.use((err, req, res, next) => {
         history: err.stack
       })
     }
-    logError(err)
+    logError(err, req.originalUrl)
   }
 })
 

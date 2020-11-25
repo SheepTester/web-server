@@ -51,7 +51,7 @@ require('../db.js').then(async client => {
     })
   })
 
-  router.ws('/no-vowels', ws => {
+  router.ws('/no-vowels.html', (ws, req) => {
     connections.add(ws)
     let id = null
     let name = 'anonymous'
@@ -125,7 +125,7 @@ require('../db.js').then(async client => {
     }
     ws.on('message', msg => {
       onMessage(msg).catch(err => {
-        logError(err)
+        logError(err, req.originalUrl)
       })
     })
     ws.on('close', () => {

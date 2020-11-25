@@ -12,6 +12,6 @@ const client = new MongoClient('mongodb://localhost:27017', {
 module.exports = client.connect()
   .then(() => client)
   .catch(err => {
-    logError(err)
+    logError(err, 'db.js (connecting to the database)')
     client.close()
   })
