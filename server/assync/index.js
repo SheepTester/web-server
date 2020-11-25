@@ -4,6 +4,7 @@ module.exports = router
 
 const assert = require('assert')
 const validHash = /^[0-9a-f]{1,64}$/i
+const validAsgnId = /^\w{1,64}$/i
 const { asyncHandler } = require('../utils.js')
 
 require('../db.js').then(async client => {
@@ -38,14 +39,24 @@ require('../db.js').then(async client => {
   router.post('/:hash/:asgnId/', asyncHandler(async (req, res) => {
     const { hash, asgnId } = req.params
     assert.ok(validHash.test(hash), 'Hash doesn\'t look like a hash.')
+    assert.ok(validAsgnId.test(hash), 'Assignment ID should be from generateID.')
     const {
       text,
       category,
       importance,
-      dueObj,
+      dueObj: { d, m, y },
       period,
       done
     } = req.body
+    // Generally lazy validation just to prevent abuse
+    assert.ok(text.length < 10000, 'Spent less time planning your time. (hint: text too long)')
+    assert.ok(category.length < 20, 'UGWA, use shorter category names, thanks.')
+    assert.ok(typeof importance === 'number', 'Importance is a quantity.')
+    assert.ok(typeof d === 'number', 'The date should be a number.')
+    assert.ok(typeof m === 'number', 'The month should be a number.')
+    assert.ok(typeof y === 'number', 'The year should be a number.')
+    assert.ok(period.length < 20, 'UGWA, use shorter period names, thanks.')
+    assert.ok(typeof done === 'boolean', 'You can either be done or not done!')
     // https://docs.mongodb.com/drivers/node/usage-examples/updateOne
     // updateOne(query, operators, options)
     await users.updateOne({ hash }, {
@@ -67,7 +78,7 @@ require('../db.js').then(async client => {
       text,
       category,
       importance,
-      dueObj,
+      dueObj: { d, m, y },
       period,
       done
     }
@@ -83,6 +94,7 @@ require('../db.js').then(async client => {
   router.delete('/:hash/:asgnId/', asyncHandler(async (req, res) => {
     const { hash, asgnId } = req.params
     assert.ok(validHash.test(hash), 'Hash doesn\'t look like a hash.')
+    assert.ok(validAsgnId.test(hash), 'Assignment ID should be from generateID.')
     await users.updateOne({ hash }, {
       $pull: {
         // Removes assignment ID from assignments array

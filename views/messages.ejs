@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Messages</title>
+  </head>
+  <body>
+    <% for (const { id, name, date, message } of messages) { %>
+      <p data-time="<%= id %>" data-date="<%= date.toISOString() %>">
+        <%= name %> says, <strong><%= message %></strong> <em>(<%= date.toString() %>)</em>
+      </p>
+    <% } %>
+    <p>
+      <em>
+        <a href="?from=<%= messages.length && messages[messages.length - 1].toISOString() %>&limit=<%= limit %>">Next</a>
+      </em>
+    </p>
+  </body>
+</html>

@@ -14,6 +14,9 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 app.set('view engine', 'ejs')
+app.set('view options', {
+  rmWhitespace: true
+})
 app.use(express.static('public'))
 require('express-ws')(app)
 
@@ -58,6 +61,8 @@ app.use('/counter', require('./counter/index.js'))
 app.use('/colour', require('./colour/index.js'))
 
 app.use('/assync', require('./assync/index.js'))
+
+app.use('/interstud-comm', require('./interstud-comm/index.js'))
 
 function requestForHtml (req) {
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation/List_of_default_Accept_values
