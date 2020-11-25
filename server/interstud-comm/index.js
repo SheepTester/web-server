@@ -4,6 +4,7 @@ module.exports = router
 
 const logError = require('../log-error.js')
 const { asyncHandler } = require('../utils.js')
+const { wsReady } = require('../ws.js')
 
 require('../db.js').then(async client => {
   const db = client.db('interstudent-communication')
@@ -50,6 +51,17 @@ require('../db.js').then(async client => {
       limit
     })
   })
+
+  router.post('/hw', async (req, res) => {
+    await dumps.insertOne({
+      id: req.query.id,
+      dump: req.body
+    })
+    res.status(204).end()
+  })
+
+  // EVERYTHING BEYOND THIS POINT REQUIRES EXPRESS-WS
+  await wsReady
 
   router.ws('/no-vowels.html', (ws, req) => {
     connections.add(ws)
@@ -131,13 +143,5 @@ require('../db.js').then(async client => {
     ws.on('close', () => {
       connections.delete(ws)
     })
-  })
-
-  router.post('/hw', async (req, res) => {
-    await dumps.insertOne({
-      id: req.query.id,
-      dump: req.body
-    })
-    res.status(204).end()
   })
 })

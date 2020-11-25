@@ -15,5 +15,6 @@ require('greenlock-express')
       httpServer.close()
       httpsServer.close()
     }
+    app.onServer(httpsServer)
   })
   .serve(app)

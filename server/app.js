@@ -9,6 +9,7 @@ const { asyncHandler, hashPassword } = require('./utils.js')
 
 const dbClient = require('./db.js')
 const logError = require('./log-error.js')
+const { wsIsReady } = require('./ws.js')
 
 const app = express()
 app.use(express.json())
@@ -18,7 +19,16 @@ app.set('view options', {
   rmWhitespace: true
 })
 app.use(express.static('public'))
-require('express-ws')(app)
+
+// Annoying Greenlock gives the http(s)server asynchronously (after app is
+// created), but express-ws needs the server object D:
+app.onServer = server => {
+  // Second argument: https://github.com/HenningM/express-ws/blob/master/src/index.js
+  // https://stackoverflow.com/a/32705838
+  require('express-ws')(app, server)
+
+  wsIsReady()
+}
 
 app.get('/', (req, res) => {
   if (requestForHtml(req)) {
@@ -120,6 +130,7 @@ if (require.main === module) {
   app.stop = () => {
     server.close()
   }
+  app.onServer(server)
 }
 
 module.exports = app
