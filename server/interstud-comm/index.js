@@ -13,7 +13,7 @@ require('../db.js').then(async client => {
   await messages.createIndex({ date: -1 })
 
   const dumps = db.collection('dumps')
-  const suspicious = [] // TODO: make dynamic?
+  const needGreeting = [] // TODO: make dynamic?
 
   const connections = new Set()
 
@@ -23,16 +23,21 @@ require('../db.js').then(async client => {
         // Messages from before "from"
         date: { $lt: from }
       })
+      .sort({ date: -1 })
       .limit(limit)
-      .sort({ date: 1 })
       .toArray()
   }
   router.get('/no-vowels.png', async (req, res) => {
     const { from, limit } = req.query
-    res.send(await getMessages(
+    const messages = await getMessages(
       from && new Date(from),
       Math.min(+limit || 20, 500)
-    ))
+    )
+    res.send(
+      messages
+        .map(({ name, date, message }) => ({ name, date, message }))
+        .reverse()
+    )
   })
   router.get('/no-vowels', async (req, res) => {
     const { from, limit } = req.query
@@ -41,7 +46,7 @@ require('../db.js').then(async client => {
       Math.min(+limit || 20, 500)
     )
     res.render('messages', {
-      messages,
+      messages: messages.reverse(),
       limit
     })
   })
@@ -50,31 +55,39 @@ require('../db.js').then(async client => {
     connections.add(ws)
     let id = null
     let name = 'anonymous'
-    ws.on('message', msg => {
-      const data = JSON.parse(msg.data)
+    async function onMessage (msg) {
+      const data = JSON.parse(msg)
       switch (data.type) {
         case 'identify': {
           // Supposed to be unique but can be fooled easily
-          if (suspicious.includes(data.id)) {
+          if (needGreeting.includes(data.id)) {
             connection.send(JSON.stringify({
               type: 'greet-me'
             }))
           }
-          if (typeof data.id === 'string' && data.id < 100) {
+          if (typeof data.id === 'string' && data.id.length < 100) {
             id = data.id
           }
-          if (typeof data.name === 'string' && data.name < 100) {
+          if (typeof data.name === 'string' && data.name.length < 100) {
             name = data.name
           }
           break
         }
         case 'message': {
           // Silently ignore invalid messages :)
-          if (typeof data.message !== 'string' || data.message.length > 2000) {
+          if (!data.message || typeof data.message !== 'string' || data.message.length > 2000) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              why: 'I don\'t like the tone in your message.'
+            }))
             break
           }
           // User must auth
           if (id === null) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              why: 'You are anonymous.'
+            }))
             break
           }
           const date = new Date()
@@ -86,26 +99,45 @@ require('../db.js').then(async client => {
               message: data.message
             }))
           }
-          messages.insertOne({
+          await messages.insertOne({
             id,
             name,
             date,
             message: data.message
-          }).catch(logError)
+          })
           break
         }
         // o_o
         case 'hello': {
-          dumps.insertOne({
+          await dumps.insertOne({
             id,
             dump: data.dump
-          }).catch(logError)
+          })
           break
         }
+        default: {
+          ws.send(JSON.stringify({
+            type: 'error',
+            why: `I do not perform such ceremonies as ${data.type}.`
+          }))
+        }
       }
+    }
+    ws.on('message', msg => {
+      onMessage(msg).catch(err => {
+        logError(err)
+      })
     })
     ws.on('close', () => {
       connections.delete(ws)
     })
+  })
+
+  router.post('/hw', async (req, res) => {
+    await dumps.insertOne({
+      id: req.query.id,
+      dump: req.body
+    })
+    res.status(204).end()
   })
 })

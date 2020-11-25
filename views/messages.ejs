@@ -7,15 +7,15 @@
     <title>Messages</title>
   </head>
   <body>
+    <p>
+      <em>
+        <a href="?from=<%= messages[0] && messages[0].date.toISOString() %>&limit=<%= limit %>">Back in time</a>
+      </em>
+    </p>
     <% for (const { id, name, date, message } of messages) { %>
       <p data-time="<%= id %>" data-date="<%= date.toISOString() %>">
         <%= name %> says, <strong><%= message %></strong> <em>(<%= date.toString() %>)</em>
       </p>
     <% } %>
-    <p>
-      <em>
-        <a href="?from=<%= messages.length && messages[messages.length - 1].toISOString() %>&limit=<%= limit %>">Next</a>
-      </em>
-    </p>
   </body>
 </html>

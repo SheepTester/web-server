@@ -55,7 +55,7 @@ require('../db.js').then(async client => {
     assert.ok(typeof d === 'number', 'The date should be a number.')
     assert.ok(typeof m === 'number', 'The month should be a number.')
     assert.ok(typeof y === 'number', 'The year should be a number.')
-    assert.ok(period.length < 20, 'UGWA, use shorter period names, thanks.')
+    assert.ok(period === null || period.length < 20, 'UGWA, use shorter period names, thanks.')
     assert.ok(typeof done === 'boolean', 'You can either be done or not done!')
     // https://docs.mongodb.com/drivers/node/usage-examples/updateOne
     // updateOne(query, operators, options)
