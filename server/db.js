@@ -1,0 +1,17 @@
+// Run local database
+// /c/Program\ Files/MongoDB/Server/4.4/bin/mongod.exe
+
+const logError = require('./log-error.js')
+
+const { MongoClient } = require('mongodb')
+const client = new MongoClient('mongodb://localhost:27017', {
+  // Using these because https://mongoosejs.com/ does /shrug
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+module.exports = client.connect()
+  .then(() => client)
+  .catch(err => {
+    logError(err)
+    client.close()
+  })

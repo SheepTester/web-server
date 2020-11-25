@@ -5,7 +5,7 @@ module.exports = router
 const assert = require('assert')
 
 router.get('/400', (req, res) => {
-  assert(false, 'User asked for a 400 page!')
+  assert(false, 'User should not have asked for a 400 page.')
 })
 
 router.get('/500', (req, res) => {

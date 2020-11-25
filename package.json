@@ -6,8 +6,8 @@
   "scripts": {
     "serve": "npm run serve:update && node server/start-server.js",
     "serve:loop": "node server/server.js",
-    "serve:update": "git fetch origin master && git reset --hard origin/master && npm install",
-    "start": "node server/app.js",
+    "serve:update": "git fetch origin master && git reset --hard origin/master && npm install --only=prod",
+    "start": "nodemon server/app.js",
     "test": "standard --verbose | snazzy"
   },
   "repository": {
@@ -16,14 +16,18 @@
   },
   "author": "SheepTester",
   "license": "MIT",
-  "devDependencies": {},
+  "devDependencies": {
+    "nodemon": "^2.0.6"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "ejs": "^3.1.5",
     "express": "^4.17.1",
+    "express-ws": "^4.0.0",
     "forever-monitor": "^3.0.3",
     "greenlock-express": "^4.0.3",
     "lowdb": "^1.0.0",
+    "mongodb": "^3.6.3",
     "nodemailer": "^6.4.16"
   }
 }

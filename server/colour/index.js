@@ -19,7 +19,7 @@ router.get('/:colour', (req, res) => {
         res.redirect(`./${[...str.toLowerCase()].map(c => c + c).join('')}`)
       }
     } else {
-      res.status(404).render('colour', { colour })
+      res.status(404).render('404', { url: `"#${colour}"` })
     }
   }
 })
