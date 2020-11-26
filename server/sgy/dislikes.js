@@ -6,10 +6,6 @@ const { asyncHandler, responseOk, md5 } = require('../utils.js')
 const validDomain = /^\w{1,50}$/
 const validId = /^\d{1,16}$/
 const validHash = /^[0-9a-f]{1,64}$/i
-function isString (value, maxLength = Infinity, nonEmpty = true) {
-  return typeof value === 'string' && value.length <= maxLength &&
-    (value || !nonEmpty)
-}
 
 const sgyPortfolio = (domain, userId, portfolioId, pageId) =>
   `https://${domain}.schoology.com/portfolios/users/${userId}/portfolios/${portfolioId}/items/${pageId}`

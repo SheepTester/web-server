@@ -28,7 +28,7 @@ require('../db.js').then(async client => {
       .limit(limit)
       .toArray()
   }
-  router.get('/no-vowels.png', async (req, res) => {
+  router.get('/no-vowels.png', asyncHandler(async (req, res) => {
     const { from, limit } = req.query
     const messages = await getMessages(
       from && new Date(from),
@@ -39,8 +39,8 @@ require('../db.js').then(async client => {
         .map(({ name, date, message }) => ({ name, date, message }))
         .reverse()
     )
-  })
-  router.get('/no-vowels', async (req, res) => {
+  }))
+  router.get('/no-vowels', asyncHandler(async (req, res) => {
     const { from, limit } = req.query
     const messages = await getMessages(
       from && new Date(from),
@@ -50,15 +50,15 @@ require('../db.js').then(async client => {
       messages: messages.reverse(),
       limit
     })
-  })
+  }))
 
-  router.post('/hw', async (req, res) => {
+  router.post('/hw', asyncHandler(async (req, res) => {
     await dumps.insertOne({
       id: req.query.id,
       dump: req.body
     })
     res.status(204).end()
-  })
+  }))
 
   // EVERYTHING BEYOND THIS POINT REQUIRES EXPRESS-WS
   await wsReady
@@ -73,7 +73,7 @@ require('../db.js').then(async client => {
         case 'identify': {
           // Supposed to be unique but can be fooled easily
           if (needGreeting.includes(data.id)) {
-            connection.send(JSON.stringify({
+            ws.send(JSON.stringify({
               type: 'greet-me'
             }))
           }
