@@ -4,6 +4,7 @@ const assert = require('assert')
 const { asyncHandler, responseOk, md5 } = require('../utils.js')
 
 const validDomain = /^\w{1,50}$/
+const validNid = /^\w?\d{1,16}$/
 const validId = /^\d{1,16}$/
 const validHash = /^[0-9a-f]{1,64}$/i
 
@@ -21,9 +22,8 @@ module.exports = async function main (router, db) {
   router.post('/dislike/:domain/:nid', asyncHandler(async (req, res) => {
     const { domain, nid } = req.params
     const { userId, portfolioId, pageId, publicHash } = req.body
-
     assert(validDomain.test(domain), 'Bad domain. It should be a valid subdomain of Schoology.')
-    assert(validId.test(nid), 'Invalid NID. It should be around ten digits.')
+    assert(validNid.test(nid), 'Invalid NID. It should be around ten digits.')
     const domainNid = `${domain}-${nid}`
 
     if (!cookies.get(domain)) {
@@ -31,12 +31,12 @@ module.exports = async function main (router, db) {
       cookies.set(domain, `SESS${md5(`${domain}.schoology.com`)}=anything lol`)
     }
 
-    assert(validId.test(userId), 'Tasteless user ID.')
+    assert(validId.test(userId) && typeof userId === 'string', 'Tasteless user ID.')
     assert(validId.test(portfolioId), 'Boring portfolio ID.')
     assert(validId.test(pageId), 'Page ID has no flavour.')
     assert(validHash.test(publicHash), 'Public hash doesn\'t seem like a hash.')
 
-    const { metadata: { content } } = await fetch(
+    const { data: { metadata: { content } } } = await fetch(
       sgyPortfolio(domain, userId, portfolioId, pageId),
       {
         headers: {
@@ -52,12 +52,12 @@ module.exports = async function main (router, db) {
     const update = content.includes(`[love${nid}]`)
       ? {
         $addToSet: {
-          dislikers: userId
+          dislikers: `${domain}-${userId}`
         }
       }
       : {
         $pull: {
-          dislikers: userId
+          dislikers: `${domain}-${userId}`
         }
       }
     await dislikes.updateOne({ domainNid }, {
@@ -68,6 +68,9 @@ module.exports = async function main (router, db) {
     }, {
       upsert: true
     })
+    res.send({
+      disliking: content.includes(`[love${nid}]`)
+    })
   }))
 
   router.get('/dislike/:domain/', asyncHandler(async (req, res) => {
@@ -75,7 +78,7 @@ module.exports = async function main (router, db) {
     assert(validDomain.test(domain), 'Bad domain. It should be a valid subdomain of Schoology.')
     const domainNids = req.query.nids
       .split('-')
-      .filter(nid => validId.test(nid))
+      .filter(nid => validNid.test(nid))
       .map(nid => `${domain}-${nid}`)
 
     if (domainNids.length === 0) {
