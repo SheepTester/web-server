@@ -42,7 +42,9 @@ module.exports = async function main (router, db) {
     // https://stackoverflow.com/a/37023840
     const bulkUpdateOperations = Object.entries(req.body)
       .map(([option, value]) => {
-        assert(typeof value === 'string', `${option}'s value should be a string!`)
+        if (typeof value !== 'string') {
+          value = `[unknown ${typeof value}]`
+        }
         return {
           updateOne: {
             filter: { option, value },
@@ -97,7 +99,7 @@ module.exports = async function main (router, db) {
       )
     } else {
       res.render('table', {
-        title: `Users over time`,
+        title: 'Users over time',
         columns: [['timestamp', 'Time (ten minute interval)'], ['users', 'Number of users']],
         data
       })
