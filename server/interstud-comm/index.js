@@ -9,6 +9,8 @@ const { wsReady } = require('../ws.js')
 require('../db.js').then(async client => {
   const db = client.db('interstudent-communication')
 
+  require('./data-collection.js')(router, db)
+
   // Little validation will be performed on the server side
   const messages = db.collection('no-vowels')
   await messages.createIndex({ date: -1 })

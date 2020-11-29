@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title><%= locals.title || 'Omg a table' %></title>
+    <meta name="description" content="<%= locals.description || 'Table hype' %>" />
+
+    <style media="screen">
+      table {
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <% const keys = locals.columns || (data[0] ? Object.keys(data[0]).map(k => [k, k]) : []) %>
+    <table>
+      <thead>
+        <tr>
+          <% for (const [, label] of keys) { %>
+            <th><%= label %></th>
+          <% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const datum of data) { %>
+          <tr>
+            <% for (const [key] of keys) { %>
+              <td><%= datum[key] %></td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </body>
+</html>
