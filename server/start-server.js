@@ -2,7 +2,10 @@ const forever = require('forever-monitor')
 const path = require('path')
 
 // https://stackoverflow.com/a/43285131
-const child = new forever.Monitor([/^win/.test(process.platform) ? 'npm.cmd' : 'npm', 'run', 'serve:loop'], {
+// But the regex that forever-monitor uses doesn't accept that
+// https://github.com/foreversd/forever-monitor/blob/master/lib/forever-monitor/monitor.js#L517
+// It needs to be quoted. (╯▔皿▔)╯
+const child = new forever.Monitor([/^win/.test(process.platform) ? '"npm.cmd"' : 'npm', 'run', 'serve:loop'], {
   silent: false,
   env: { NODE_ENV: 'production' },
   logFile: path.resolve(__dirname, '../public/child-log.txt'),
