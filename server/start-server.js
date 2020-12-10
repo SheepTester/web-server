@@ -1,6 +1,7 @@
 const forever = require('forever-monitor')
 
-const child = new forever.Monitor(['npm', 'run', 'serve:loop'], {
+// https://stackoverflow.com/a/43285131
+const child = new forever.Monitor([/^win/.test(process.platform) ? 'npm.cmd' : 'npm', 'run', 'serve:loop'], {
   silent: false,
   env: { NODE_ENV: 'production' }
 })
