@@ -112,9 +112,19 @@ db-*.json
 # Fancy logs thing
 public/upgrade-log.txt
 public/error-log.txt
+public/stdout.txt
+public/stderr.txt
 
 # Gmail credentials
 gmail.json
 
 # Greenlock config backups
 *.bak
+
+# Greenlock
+greenlock.d/accounts/
+greenlock.d/live/
+greenlock.d/staging/
+
+# Manual backups
+server/assassin/db-backups/
