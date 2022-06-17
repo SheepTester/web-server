@@ -77,6 +77,7 @@ app.use('/sgy', require('./sgy/index.js'))
 function requestForHtml (req) {
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation/List_of_default_Accept_values
   const accept = req.get('accept')
+  if (!accept) return false
   // All browsers send text/html first
   return accept.includes('text/html') ||
     // Just in case...

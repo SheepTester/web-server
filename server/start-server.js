@@ -14,7 +14,7 @@ const child = new forever.Monitor([/^win/.test(process.platform) ? '"npm.cmd"' :
 })
 
 child.on('restart', () => {
-  console.log(`Restart #${child.times}`)
+  console.log(`Restart #${child.times} [${new Date().toLocaleTimeString()}]`)
 })
 
 child.on('exit', () => {

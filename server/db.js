@@ -4,7 +4,7 @@
 const logError = require('./log-error.js')
 
 const { MongoClient } = require('mongodb')
-const client = new MongoClient('mongodb://localhost:27017', {
+const client = new MongoClient('mongodb://127.0.0.1:27017', {
   // Using these because https://mongoosejs.com/ does /shrug
   useNewUrlParser: true,
   useUnifiedTopology: true

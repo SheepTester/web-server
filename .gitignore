@@ -114,6 +114,9 @@ public/upgrade-log.txt
 public/error-log.txt
 public/stdout.txt
 public/stderr.txt
+public/child-log.txt
+public/child-stdout.txt
+public/child-stderr.txt
 
 # Gmail credentials
 gmail.json
