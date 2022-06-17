@@ -124,6 +124,10 @@ app.use((err, req, res, next) => {
   }
 })
 
+process.on('unhandledRejection', reason => {
+  logError(reason, 'promise')
+})
+
 if (require.main === module) {
   const server = app.listen(3000, () => {
     console.log('We are watching.')

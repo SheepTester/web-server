@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
     <title>#<%= colour %></title>
-    <meta name="description" content="Learn about the colour #<%= colour %>" />
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#<%= colour %>">
+
+    <meta
+      name="description"
+      content="Preview what the colour #<%= colour %> looks like."
+    />
+    <meta name="theme-color" content="#<%= colour %>" />
+    <meta name="title" content="#<%= colour %>" />
+
+    <meta property="og:title" content="#<%= colour %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/colour/<%= colour %>/preview.png" />
+    <meta
+      property="og:description"
+      content="Preview what the colour #<%= colour %> looks like."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="#<%= colour %>" />
+    <meta
+      name="twitter:description"
+      content="Preview what the colour #<%= colour %> looks like."
+    />
+    <meta name="twitter:image" content="/colour/<%= colour %>/preview.png" />
+
     <style>
       html,
       body {

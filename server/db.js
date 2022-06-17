@@ -14,4 +14,5 @@ module.exports = client.connect()
   .catch(err => {
     logError(err, 'db.js (connecting to the database)')
     client.close()
+    return Promise.reject(err)
   })
