@@ -16,7 +16,10 @@
 
     <meta property="og:title" content="#<%= colour %>" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/colour/<%= colour %>/preview.png" />
+    <meta
+      property="og:image"
+      content="<%= host %>/colour/<%= colour %>/preview.png"
+    />
     <meta
       property="og:description"
       content="Preview what the colour #<%= colour %> looks like."
@@ -28,7 +31,10 @@
       name="twitter:description"
       content="Preview what the colour #<%= colour %> looks like."
     />
-    <meta name="twitter:image" content="/colour/<%= colour %>/preview.png" />
+    <meta
+      name="twitter:image"
+      content="<%= host %>/colour/<%= colour %>/preview.png"
+    />
 
     <style>
       html,
