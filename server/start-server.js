@@ -13,7 +13,10 @@ const child = new forever.Monitor([/^win/.test(process.platform) ? '"npm.cmd"' :
   env: { NODE_ENV: 'production' },
   logFile: path.resolve(__dirname, '../public/child-log.txt'),
   outFile: path.resolve(__dirname, '../public/child-stdout.txt'),
-  errFile: path.resolve(__dirname, '../public/child-stderr.txt')
+  errFile: path.resolve(__dirname, '../public/child-stderr.txt'),
+  // Undocumented option that avoids overwriting the file
+  // https://github.com/foreversd/forever-monitor/blob/master/lib/forever-monitor/plugins/logger.js#L30
+  append: true
 })
 
 child.on('restart', () => {
