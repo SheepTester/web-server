@@ -11,29 +11,38 @@ function getToday () {
     .padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
 }
 
-async function generateLink (date, eventId) {
-  const { questions, costs, documents } = await (
-    await scrape
-  ).getApplication(eventId)
+/**
+ * @param {import('./scrape.mjs').Cost[]} costs
+ */
+function displayCosts (costs) {
+  return costs
+    .map(
+      ({ type, description, awarded, appealApproved }) =>
+        `[${type}] ${description} ($${appealApproved || awarded})`
+    )
+    .join('\n')
+}
 
+/**
+ * @param {string} date
+ * @param {{questions: Record<string, string>, costs: import('./scrape.mjs').Cost[], documents: import('./scrape.mjs').Document[]}} object
+ * @param {number} eventId
+ */
+function generateLink (date, { questions, costs, documents }, eventId) {
   delete questions['WHO IS THIS REQUEST FOR?']
 
   return `https://calendar.google.com/calendar/render?${new URLSearchParams({
     action: 'TEMPLATE',
     text: '*free food @ place',
     details: [
+      'Link: todo',
       `${questions.ORGANIZATION} - ${questions['NAME OF EVENT']}. Expected ${questions['ESTIMATED UNDERGRADUATE ATTENDANCE']} attendees.`,
-      costs
-        .map(
-          ({ type, description, awarded, appealApproved }) =>
-            `[${type}] ${description} ($${appealApproved || awarded})`
-        )
-        .join('\n'),
-      `https://finance.ucsd.edu/Home/ViewApplication/${eventId}`,
+      displayCosts(costs),
+      `🤑 https://finance.ucsd.edu/Home/ViewApplication/${eventId}`,
       Object.entries(questions)
         .map(([question, answer]) => `❓${question}\n${answer}`)
         .join('\n\n'),
-      `Documents:\n${
+      `📑 Documents:\n${
         documents.length
           ? documents
               .map(
@@ -44,14 +53,17 @@ async function generateLink (date, eventId) {
       }`
     ].join('\n\n'),
     location: questions.VENUE,
-    dates: `${date.replaceAll('-', '')}T0300/${date.replaceAll('-', '')}T0400`
+    dates: `${date.replaceAll('-', '')}T030000/${date.replaceAll(
+      '-',
+      ''
+    )}T040000`
   })}`
 }
 
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { getEvents } = await scrape
+    const { getEvents, getApplication } = await scrape
     const date = req.query.date ?? getToday()
     const term = req.query.term ?? '1031'
     const events = (await getEvents(+term)).filter(
@@ -61,10 +73,14 @@ router.get(
       date,
       term,
       events: await Promise.all(
-        events.map(async event => ({
-          ...event,
-          link: await generateLink(date, event.finId)
-        }))
+        events.map(async event => {
+          const application = await getApplication(event.finId)
+          return {
+            ...event,
+            costs: displayCosts(application.costs),
+            link: generateLink(date, application, event.finId)
+          }
+        })
       )
     })
     next()

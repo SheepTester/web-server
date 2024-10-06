@@ -37,6 +37,10 @@
         border: 1px solid currentColor;
         padding: 5px 10px;
       }
+      pre {
+        white-space: pre-wrap;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -83,6 +87,11 @@
         </td>
         <td><%= event.name %></td>
         <td><a target="_blank" href="<%= event.link %>">Add to calendar</a></td>
+      </tr>
+      <tr>
+        <td colspan="3">
+          <pre><%= event.costs %></pre>
+        </td>
       </tr>
       <% } %>
     </table>
