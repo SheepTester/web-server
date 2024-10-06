@@ -77,6 +77,7 @@ router.get(
           const application = await getApplication(event.finId)
           return {
             ...event,
+            application,
             costs: displayCosts(application.costs),
             link: generateLink(date, application, event.finId)
           }

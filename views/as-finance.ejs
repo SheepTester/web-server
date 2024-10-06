@@ -41,6 +41,17 @@
         white-space: pre-wrap;
         margin: 0;
       }
+      input[type='checkbox'] {
+        margin: -5px;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+      }
+      .venue {
+        margin: 0;
+        font-size: 0.8em;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
@@ -72,12 +83,20 @@
     <h1>Events for <%= date %></h1>
     <table>
       <tr>
+        <th></th>
         <th>Org</th>
         <th>Event</th>
         <th>Calendar link</th>
       </tr>
       <% for (const event of events) { %>
       <tr>
+        <td rowspan="2">
+          <input
+            type="checkbox"
+            data-event="[<%= date %>] <%= event.organization %> - <%= event.name %>"
+            disabled
+          />
+        </td>
         <td>
           <a
             target="_blank"
@@ -91,9 +110,27 @@
       <tr>
         <td colspan="3">
           <pre><%= event.costs %></pre>
+          <p class="venue"><%= event.application.questions.VENUE %></p>
         </td>
       </tr>
       <% } %>
     </table>
+    <script>
+      for (const checkbox of document.querySelectorAll('[type="checkbox"]')) {
+        checkbox.checked = localStorage.asFinance?.includes(
+          checkbox.dataset.event
+        )
+        checkbox.addEventListener('change', () => {
+          let parsed = localStorage.asFinance?.split('\n') ?? []
+          if (checkbox.checked) {
+            parsed.push(checkbox.dataset.event)
+          } else {
+            parsed = parsed.filter(name => name !== checkbox.dataset.event)
+          }
+          localStorage.asFinance = parsed.join('\n')
+        })
+        checkbox.disabled = false
+      }
+    </script>
   </body>
 </html>
