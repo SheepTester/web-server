@@ -25,6 +25,18 @@
         max-width: 800px;
         padding: 20px;
       }
+
+      table {
+        border-collapse: collapse;
+      }
+      th {
+        text-align: left;
+      }
+      th,
+      td {
+        border: 1px solid currentColor;
+        padding: 5px 10px;
+      }
     </style>
   </head>
   <body>
@@ -37,9 +49,42 @@
             <input name="date" type="date" value="<%= date %>" />
           </label>
         </p>
+        <p>
+          <label>
+            Term ID:
+            <input
+              name="term"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]+"
+              value="<%= term %>"
+            />
+            (1031 is FA24 and it increments fall winter spring)
+          </label>
+        </p>
         <button type="submit">Show events</button>
       </fieldset>
     </form>
     <h1>Events for <%= date %></h1>
+    <table>
+      <tr>
+        <th>Org</th>
+        <th>Event</th>
+        <th>Calendar link</th>
+      </tr>
+      <% for (const event of events) { %>
+      <tr>
+        <td>
+          <a
+            target="_blank"
+            href="https://google.com/search?q=<%= encodeURIComponent(`ucsd ${event.organization}`) %>"
+            ><%= event.organization %></a
+          >
+        </td>
+        <td><%= event.name %></td>
+        <td><a target="_blank" href="<%= event.link %>">Add to calendar</a></td>
+      </tr>
+      <% } %>
+    </table>
   </body>
 </html>
