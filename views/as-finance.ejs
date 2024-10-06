@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>AS Finance calendar</title>
+    <meta
+      name="description"
+      content="Generates Google Calendar links for events from the AS Finance calendar"
+    />
+
+    <style>
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+        }
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji',
+          'Segoe UI Emoji', 'Segoe UI Symbol';
+        margin: 0 auto;
+        max-width: 800px;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <form method="get">
+      <fieldset>
+        <legend>Set date</legend>
+        <p>
+          <label>
+            Show events for date:
+            <input name="date" type="date" value="<%= date %>" />
+          </label>
+        </p>
+        <button type="submit">Show events</button>
+      </fieldset>
+    </form>
+    <h1>Events for <%= date %></h1>
+  </body>
+</html>
