@@ -22,7 +22,11 @@ const child = new forever.Monitor(
     errFile: path.resolve(__dirname, '../public/child-stderr.txt'),
     // Undocumented option that avoids overwriting the file
     // https://github.com/foreversd/forever-monitor/blob/master/lib/forever-monitor/plugins/logger.js#L30
-    append: true
+    append: true,
+    // Breaking change, shell: true required to run .cmd on Windows to avoid
+    // EINVAL
+    // https://github.com/nodejs/node/issues/52681#issuecomment-2076426887
+    spawnWith: { shell: true }
   }
 )
 
