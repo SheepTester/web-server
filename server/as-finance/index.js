@@ -27,21 +27,19 @@ function displayCosts (costs) {
  * @param {string} date
  * @param {{questions: Record<string, string>, costs: import('./scrape.mjs').Cost[], documents: import('./scrape.mjs').Document[]}} object
  * @param {number} eventId
+ * @param {number} minute
  */
-function generateLink (date, { questions, costs, documents }, eventId) {
+function generateLink (date, { questions, costs, documents }, eventId, minute) {
   delete questions['WHO IS THIS REQUEST FOR?']
+
+  const minuteStr = minute.toString().padStart(2, '0')
 
   return `https://calendar.google.com/calendar/render?${new URLSearchParams({
     action: 'TEMPLATE',
     text: '*free food @ place',
     details: [
-      'Link: todo',
-      `${questions.ORGANIZATION} - ${questions['NAME OF EVENT']}. Expected ${questions['ESTIMATED UNDERGRADUATE ATTENDANCE']} attendees.`,
+      'Link: todo .',
       displayCosts(costs),
-      `🤑 https://finance.ucsd.edu/Home/ViewApplication/${eventId}`,
-      Object.entries(questions)
-        .map(([question, answer]) => `❓${question}\n${answer}`)
-        .join('\n\n'),
       `📑 Documents:\n${
         documents.length
           ? documents
@@ -50,13 +48,22 @@ function generateLink (date, { questions, costs, documents }, eventId) {
               )
               .join('\n')
           : '(none)'
-      }`
+      }`,
+      `${questions.ORGANIZATION} - ${questions['NAME OF EVENT']}. Expected ${
+        questions['ESTIMATED UNDERGRADUATE ATTENDANCE']
+      } attendees.\nhttps://google.com/search?q=${encodeURIComponent(
+        `ucsd ${questions.ORGANIZATION}`
+      )}`,
+      `⚠️ All information comes from https://finance.ucsd.edu/Home/ViewApplication/${eventId} @Khushi\nIf the event time is between 5:01 and 5:29 pm, that is not the true time. You can find the true event time online.`,
+      Object.entries(questions)
+        .map(([question, answer]) => `❓${question}\n${answer}`)
+        .join('\n\n')
     ].join('\n\n'),
     location: questions.VENUE,
-    dates: `${date.replaceAll('-', '')}T030000/${date.replaceAll(
+    dates: `${date.replaceAll('-', '')}T17${minuteStr}00/${date.replaceAll(
       '-',
       ''
-    )}T040000`
+    )}T18${minuteStr}00`
   })}`
 }
 
@@ -73,13 +80,14 @@ router.get(
       date,
       term,
       events: await Promise.all(
-        events.map(async event => {
+        events.map(async (event, i) => {
           const application = await getApplication(event.finId)
           return {
             ...event,
             application,
             costs: displayCosts(application.costs),
-            link: generateLink(date, application, event.finId)
+            link: generateLink(date, application, event.finId, i + 1),
+            time: `17:${(i + 1).toString().padStart(2, '0')}`
           }
         })
       )

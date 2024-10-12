@@ -42,7 +42,6 @@
         margin: 0;
       }
       input[type='checkbox'] {
-        margin: -5px;
         width: 20px;
         height: 20px;
         cursor: pointer;
@@ -51,6 +50,13 @@
         margin: 0;
         font-size: 0.8em;
         font-style: italic;
+      }
+      .less-padding {
+        padding: 2px;
+      }
+      .time {
+        font-size: 8px;
+        text-align: center;
       }
     </style>
   </head>
@@ -90,12 +96,13 @@
       </tr>
       <% for (const event of events) { %>
       <tr>
-        <td rowspan="2">
+        <td rowspan="2" class="less-padding">
           <input
             type="checkbox"
             data-event="[<%= date %>] <%= event.organization %> - <%= event.name %>"
             disabled
           />
+          <div class="time"><%= event.time %></div>
         </td>
         <td>
           <a
