@@ -11,6 +11,17 @@ function getToday () {
     .padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
 }
 
+function estimateCurrentTerm () {
+  // 1032 is WI25 and it increments fall winter spring
+  const date = new Date()
+  const month = date.getMonth()
+  // JAN FEB MAR assumed to be winter; APR MAY JUN JUL assumed to be spring; AUG
+  // SEP OCT NOV DEC assumed to be fall
+  return String(
+    1032 + (date.getFullYear() - 2025) * 3 + (month < 3 ? 0 : month < 8 ? 1 : 2)
+  )
+}
+
 /**
  * @param {import('./scrape.mjs').Cost[]} costs
  */
@@ -43,10 +54,10 @@ function generateLink (date, { questions, costs, documents }, eventId, minute) {
       `📑 Documents:\n${
         documents.length
           ? documents
-              .map(
-                ({ name, path }) => `${name} (https://finance.ucsd.edu${path})`
-              )
-              .join('\n')
+            .map(
+              ({ name, path }) => `${name} (https://finance.ucsd.edu${path})`
+            )
+            .join('\n')
           : '(none)'
       }`,
       `${questions.ORGANIZATION} - ${questions['NAME OF EVENT']}. Expected ${
@@ -67,31 +78,46 @@ function generateLink (date, { questions, costs, documents }, eventId, minute) {
   })}`
 }
 
+async function getFullEvents (date, term) {
+  console.log('request', date, term)
+  const { getEvents, getApplication } = await scrape
+  const events = (await getEvents(+term)).filter(
+    event => event.date.toISOString().slice(0, 10) === date
+  )
+  return await Promise.all(
+    events.map(async (event, i) => {
+      const application = await getApplication(event.finId)
+      return {
+        ...event,
+        application,
+        costs: displayCosts(application.costs),
+        link: generateLink(date, application, event.finId, i + 1),
+        time: `17:${(i + 1).toString().padStart(2, '0')}`
+      }
+    })
+  )
+}
+
+const scrapeRequests = {}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { getEvents, getApplication } = await scrape
     const date = req.query.date ?? getToday()
-    const term = req.query.term ?? '1031'
-    const events = (await getEvents(+term)).filter(
-      event => event.date.toISOString().slice(0, 10) === date
-    )
+    const term = req.query.term ?? estimateCurrentTerm()
+    const key = `${date} ${term}`
+    if (!scrapeRequests[key]) {
+      scrapeRequests[key] = getFullEvents(date, term)
+      // Invalidate cache entry after 30 min
+      setTimeout(() => {
+        delete scrapeRequests[key]
+      }, 30 * 60 * 1000)
+    }
+
     res.render('as-finance', {
       date,
       term,
-      events: await Promise.all(
-        events.map(async (event, i) => {
-          const application = await getApplication(event.finId)
-          return {
-            ...event,
-            application,
-            costs: displayCosts(application.costs),
-            link: generateLink(date, application, event.finId, i + 1),
-            time: `17:${(i + 1).toString().padStart(2, '0')}`
-          }
-        })
-      )
+      events: await scrapeRequests[key]
     })
-    next()
   })
 )

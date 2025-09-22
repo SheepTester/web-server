@@ -17,7 +17,8 @@
   "author": "SheepTester",
   "license": "MIT",
   "devDependencies": {
-    "nodemon": "^2.0.6"
+    "nodemon": "^2.0.6",
+    "prettierx": "^0.19.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
