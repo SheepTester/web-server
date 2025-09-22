@@ -19,6 +19,7 @@ low(new FileAsync(path.resolve(__dirname, './db-notes.json')))
     })
 
     router.get('/:id/', (req, res) => {
+      res.header('Content-Type', 'text/plain')
       res.send(db.get(req.params.id, '').value())
     })
 
