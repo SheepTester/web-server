@@ -1,9 +1,15 @@
 # Web server
 
-This contains all my server magic; I don't know how long this will last.
+This contains the code for my web server hosted at home. Originally written for [Elimination](https://orbiit.github.io/elimination/), this is now a monorepo providing backend services for various little-used projects, involving probably like 3 or 4 different databases.
+
+The server used to run 24/7 on my mom's old laptop, but it was prone to shutting down when someone closed the lid. For the past 5-ish years, my server now runs on a Windows mini PC with 4 GB RAM. It has decent uptime, except for when our home IP address changes (infrequently) or Palo Alto surprises us with a blackout (happens more often than it should).
+
+It was a pain to get the server running reliably in the first place, and I dread having to touch any part of this shit. The server is a ticking time bomb because I have performed no backups beyond copying some JSON files into a different folder on the same machine. Eventually, I plan on winding down this web server, but I would first like to provide a static archive for the frontend projects that rely on this server.
+
+## Development
 
 ```bash
-# Starts server locally
+# Starts server locally at http://localhost:3000/
 npm start
 
 # Starts server for production (aggressively restarts when stops)
@@ -14,7 +20,3 @@ npm test
 ```
 
 Local server is available at http://localhost:3000/
-
-## Brief history
-
-This was originally made just for making the assassin game, but I decided to use this for other server-related things. That's why some parts of the repository/commit history might be a bit off; the repository used to be at https://github.com/Orbiit/assassin/.
