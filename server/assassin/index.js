@@ -123,7 +123,7 @@ Promise.all([
     }
     delete sessions[sessionID]
     if (Date.now() > session.end) {
-      throw new Error('The password reset form has expired (it lasts for 24 hours). Email sy24484@pausd.us for a new one.')
+      throw new Error('The password reset form has expired (it lasts for 24 hours). Email seanthesheep22+wsrv@outlook.com for a new one.')
     }
     await userSettings(users[session.user], {
       password
@@ -776,7 +776,7 @@ Promise.all([
     let killer, victim
     if (self) {
       victim = player
-      assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      assert(has(game.players, player.assassin), 'Uh... your assassin isn\'t a participant of this game. Please send an email to seanthesheep22+wsrv@outlook.com because this shouldn\'t be happening.')
       killer = game.players[player.assassin]
 
       sendNotif(player.assassin, {
@@ -787,7 +787,7 @@ Promise.all([
       })
     } else {
       killer = player
-      assert(has(game.players, player.target), 'Uh... your target isn\'t a participant of this game. Please send an email to sy24484@pausd.us because this shouldn\'t be happening.')
+      assert(has(game.players, player.target), 'Uh... your target isn\'t a participant of this game. Please send an email to seanthesheep22+wsrv@outlook.com because this shouldn\'t be happening.')
       victim = game.players[player.target]
 
       const { code } = req.body
