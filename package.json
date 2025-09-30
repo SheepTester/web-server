@@ -7,7 +7,7 @@
     "serve": "npm run serve:update && node server/start-server.js",
     "serve:loop": "node server/server.js",
     "serve:update": "git fetch origin master && git reset --hard origin/master && npm install --only=prod",
-    "start": "nodemon server/app.js",
+    "start": "nodemon server/app.js --ignore public/*.json --ignore public/*.txt",
     "test": "standard --verbose | snazzy"
   },
   "repository": {

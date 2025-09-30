@@ -1,4 +1,5 @@
 const express = require('express')
+const fs = require('fs/promises')
 const { asyncHandler } = require('../utils')
 const scrape = import('./scrape.mjs')
 const router = express.Router()
@@ -79,7 +80,6 @@ function generateLink (date, { questions, costs, documents }, eventId, minute) {
 }
 
 async function getFullEvents (date, term) {
-  console.log('request', date, term)
   const { getEvents, getApplication } = await scrape
   const events = (await getEvents(+term)).filter(
     event => event.date.toISOString().slice(0, 10) === date
@@ -100,10 +100,21 @@ async function getFullEvents (date, term) {
 
 const scrapeRequests = {}
 
+// I want to know how much /as-finance/ is being used. Hopefully browsers won't
+// have unique enough user agents to be personally identifying, but I want to
+// distinguish humans from bots.
+const TRACKING_PATH = 'public/as-finance-visits.json'
+const trackingRef = fs
+  .readFile(TRACKING_PATH, 'utf-8')
+  .catch(() => '{}')
+  .then(JSON.parse)
+  .then(current => ({ current }))
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const date = req.query.date ?? getToday()
+    const today = getToday()
+    const date = req.query.date ?? today
     const term = req.query.term ?? estimateCurrentTerm()
     const key = `${date} ${term}`
     if (!scrapeRequests[key]) {
@@ -119,5 +130,14 @@ router.get(
       term,
       events: await scrapeRequests[key]
     })
+
+    const ref = await trackingRef
+    ref.current[today] ??= { today: { total: 0 }, other: { total: 0 } }
+    const eventClass = today === date ? 'today' : 'other'
+    ref.current[today][eventClass].total++
+    const userAgent = `ua:${req.header('user-agent') ?? ''}`
+    ref.current[today][eventClass][userAgent] ??= 0
+    ref.current[today][eventClass][userAgent]++
+    fs.writeFile(TRACKING_PATH, JSON.stringify(ref.current, null, '\t') + '\n')
   })
 )

@@ -117,6 +117,7 @@ public/stderr.txt
 public/child-log.txt
 public/child-stdout.txt
 public/child-stderr.txt
+public/as-finance-visits.json
 
 # Gmail credentials
 gmail.json
