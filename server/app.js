@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const fs = require('fs/promises')
 
 const assert = require('assert')
 const { exec } = require('child_process')
@@ -36,23 +37,38 @@ app.get('/', (req, res) => {
   }
 })
 
-const restartHash = 'f1794bff3750523268b8aa3bab403a2598f3ff96bc58c0d543b65d634b52eaeff1fc5875b1a59e09bed0a161b9747b2fe76cf40cda8e962f3be2f4044efa34ec'
+app.get(
+  '/public-sitemap',
+  asyncHandler(async (req, res) => {
+    const files = await fs.readdir('public', { recursive: true })
+    res.header('Content-Type', 'text/plain')
+    res.send(files.map(file => `/${file}\n`).join(''))
+  })
+)
+
+const restartHash =
+  'f1794bff3750523268b8aa3bab403a2598f3ff96bc58c0d543b65d634b52eaeff1fc5875b1a59e09bed0a161b9747b2fe76cf40cda8e962f3be2f4044efa34ec'
 const restartSalt = 'You shall never know my password!'
-app.post('/restart', asyncHandler(async (req, res) => {
-  if (!app.stop) {
-    throw new Error('Cannot stop!')
-  } else if (await hashPassword(req.body.password, restartSalt) === restartHash) {
-    exec('npm run serve:update > public/upgrade-log.txt', err => {
-      if (err) {
-        throw err
-      } else {
-        res.end(stop)
-      }
-    })
-  } else {
-    res.status(401).end()
-  }
-}))
+app.post(
+  '/restart',
+  asyncHandler(async (req, res) => {
+    if (!app.stop) {
+      throw new Error('Cannot stop!')
+    } else if (
+      (await hashPassword(req.body.password, restartSalt)) === restartHash
+    ) {
+      exec('npm run serve:update > public/upgrade-log.txt', err => {
+        if (err) {
+          throw err
+        } else {
+          res.end(stop)
+        }
+      })
+    } else {
+      res.status(401).end()
+    }
+  })
+)
 async function stop () {
   dbClient.then(client => client.close())
   app.stop()
@@ -81,12 +97,14 @@ function requestForHtml (req) {
   const accept = req.get('accept')
   if (!accept) return false
   // All browsers send text/html first
-  return accept.includes('text/html') ||
+  return (
+    accept.includes('text/html') ||
     // Just in case...
     accept.includes('application/xhtml+xml') ||
     accept.includes('application/xml') ||
     // Only XML-related MIME type in IE8's accept header
     accept.includes('application/xaml+xml')
+  )
 }
 
 app.use((req, res, next) => {
