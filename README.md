@@ -20,3 +20,11 @@ npm test
 ```
 
 Local server is available at http://localhost:3000/
+
+### Help. Something broke.
+
+Shockingly I left very little detail about how the server is hosted on my mini PC, granting me an opportunity to rediscover it all each time. That stops now.
+
+In the Task Scheduler app, under "Task Scheduler Library," you can find "Epic Auto Server Start" at the top of the list. Yep, that's the web server. You can end and run it in the right sidebar. In the Actions tab, you can see what command it runs. It runs the action "Start a program," with the program `"C:\Program Files\Git\git-bash.exe"` and arguments `--cd="C:\Users\seant\Documents\web-server" -c "npm run serve >> public/stdout.txt 2>> public/stderr.txt"`.
+
+If I recall, I've made many attempts to add logging to the server manually by piping them into text files in public/, but it's still a pain to figure out what errors makes the server crash. Good luck.
