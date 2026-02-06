@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * GET /free-food/?onOrAfter=YYYY-MM-DD
+ * GET /free-food/<_id>/img.webp
+ */
+
 const { Router } = require('express')
 const { MongoClient } = require('mongodb')
 const fs = require('fs/promises')
