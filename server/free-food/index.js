@@ -64,15 +64,29 @@ router.get(
       lastEvents = events
       lastEventsTime = Date.now()
     }
-    const [y, m, d] = req.query.onOrAfter?.split('-').map(Number) ?? []
+    const [ys, ms, ds] = req.query.onOrAfter?.split('-').map(Number) ?? []
+    const [ye, me, de] = req.query.onOrBefore?.split('-').map(Number) ?? []
     res.setHeader('cache-control', 'public, max-age=' + CACHE_SECS)
     res.send(
       lastEvents
-        .map(({ result, previewData, ...rest }) => rest)
+        .map(({ result, previewData, ...rest }) => ({
+          ...rest,
+          i: previewData ? true : undefined
+        }))
         .filter(
           ({ date: { year, month, date } }) =>
-            y === undefined ||
-            (year === y ? (month === m ? date >= d : month > m) : year > y)
+            (!ys ||
+              (year === ys
+                ? month === ms
+                  ? date >= ds
+                  : month > ms
+                : year > ys)) &&
+            (!ye ||
+              (year === ye
+                ? month === me
+                  ? date <= de
+                  : month < me
+                : year < ye))
         )
     )
   })
