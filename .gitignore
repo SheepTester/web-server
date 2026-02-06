@@ -118,6 +118,9 @@ public/child-log.txt
 public/child-stdout.txt
 public/child-stderr.txt
 public/as-finance-visits.json
+public/last-pid-server.txt
+public/last-pid-start-server.txt
+public/waitz-ucsd-rec.csv
 
 # Gmail credentials
 gmail.json
@@ -129,9 +132,11 @@ gmail.json
 greenlock.d/accounts/
 greenlock.d/live/
 greenlock.d/staging/
+greenlock.d/*.tmp
 
 # Free food MongoDB credentials
 server/free-food/.free-food-user-pass
 
 # Manual backups
 server/assassin/db-backups/
+server/assassin/db-manual-backup-*/
