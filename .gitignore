@@ -130,5 +130,8 @@ greenlock.d/accounts/
 greenlock.d/live/
 greenlock.d/staging/
 
+# Free food MongoDB credentials
+server/free-food/.free-food-user-pass
+
 # Manual backups
 server/assassin/db-backups/
