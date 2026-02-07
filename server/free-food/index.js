@@ -38,14 +38,23 @@ const eventsPromise = fs
     () => {}
   )
 
+/** Map from _id to event object */
 let lastEvents
 let lastEventsTime = 0
-async function getEvents () {
+
+/**
+ * @param {number} scrapedAfter If 0, it will still list all
+ */
+async function getEvents (scrapedAfter) {
   const db = await eventsPromise
   if (!db) {
     return null
   }
-  return await db.find({ result: true }).toArray()
+  const query = { result: true }
+  if (scrapedAfter) {
+    query.scraped = { $gte: scrapedAfter }
+  }
+  return await db.find(query).toArray()
 }
 
 const router = new Router()
@@ -56,19 +65,33 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     // Cache for a minute
-    if (!lastEvents || Date.now() - lastEventsTime > CACHE_SECS * 1000) {
-      const events = await getEvents()
+    const now = Date.now()
+    if (!lastEvents || now - lastEventsTime > CACHE_SECS * 1000) {
+      const prevTime = lastEventsTime
+      lastEventsTime = now
+      lastEvents ??= {}
+      const start = performance.now()
+      // If two users make a request after server start, the second user will
+      // get no events. Hopefully that doesn't happen
+      const events = await getEvents(prevTime)
+      res.setHeader(
+        'x-debug',
+        `took ${performance.now() - start}ms, ${events?.length} new rows`
+      )
       if (!events) {
         return res.status(501).end()
       }
-      lastEvents = events
-      lastEventsTime = Date.now()
+      for (const record of events) {
+        lastEvents[record._id] = record
+      }
+    } else {
+      res.setHeader('x-debug', 'cached')
     }
     const [ys, ms, ds] = req.query.onOrAfter?.split('-').map(Number) ?? []
     const [ye, me, de] = req.query.onOrBefore?.split('-').map(Number) ?? []
     res.setHeader('cache-control', 'public, max-age=' + CACHE_SECS)
     res.send(
-      lastEvents
+      Object.values(lastEvents)
         .map(({ result, previewData, ...rest }) => ({
           ...rest,
           i: previewData ? true : undefined
@@ -100,9 +123,12 @@ router.get(
       if (!lastEvents) {
         return res.status(501).end()
       }
+      lastEvents = Object.fromEntries(
+        lastEvents.map(event => [event._id, event])
+      )
       lastEventsTime = Date.now()
     }
-    const entry = lastEvents.find(record => record._id.equals(req.params.id))
+    const entry = lastEvents[req.params.id]
     if (!entry) {
       return res.status(404).send('image not found ?')
     }
