@@ -94,6 +94,8 @@ app.use('/as-finance', require('./as-finance/index.js'))
 
 app.use('/free-food', require('./free-food/index.js'))
 
+app.use('/discord-tee', require('./discord-tee/index.js'))
+
 function requestForHtml (req) {
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation/List_of_default_Accept_values
   const accept = req.get('accept')
