@@ -8,6 +8,14 @@ function children (element) {
   )
 }
 
+function expect (expected) {
+  throw new TypeError(
+    expected
+      ? `Expected ${expected}, received null or undefined.`
+      : 'Received null or undefined.'
+  )
+}
+
 async function fetchTerm (termId) {
   return fetch('https://finance.ucsd.edu/Home/ListFunded', {
     headers: {
@@ -87,7 +95,7 @@ export async function getApplication (finId) {
       const dd = items[i + 1].textContent.trim()
       const checkbox = items[i + 1].querySelector('input')
       questions[dt] = checkbox
-        ? checkbox.getAttribute('checked') ?? 'unchecked'
+        ? (checkbox.getAttribute('checked') ?? 'unchecked')
         : dd
     }
   }
