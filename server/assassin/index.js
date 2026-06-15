@@ -8,6 +8,7 @@ const { asyncHandler, has, randomID, hashPassword } = require('../utils.js')
 const path = require('path')
 const low = require('lowdb')
 const FileAsync = require('lowdb/adapters/FileAsync')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 const email = require('./email-templates.js')
 
@@ -337,6 +338,7 @@ Promise.all([
 
   // People can spam-create users
   router.post('/create-user', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username } = req.body
     assert(typeof username === 'string', 'Username not a string!')
     assert(usernameRegex.test(username), 'Boring username!')
@@ -363,6 +365,7 @@ Promise.all([
   }))
 
   router.post('/login', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username, password } = req.body
     assert(has(users, username), 'Such a user does not exist. Maybe you misspelled your username?')
     const user = users[username]
@@ -373,12 +376,14 @@ Promise.all([
   }))
 
   router.post('/logout', asyncHandler(async (req, res) => {
+    dlog(req)
     delete sessions[req.get('X-Session-ID')]
     await sessionsDB.write()
     res.send({ ok: 'ideally' })
   }))
 
   router.post('/user-settings', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     await userSettings(user, req.body, 'edit')
     await usersDB.write()
@@ -387,12 +392,14 @@ Promise.all([
 
   // Authenticated user data (for user options)
   router.get('/user-settings', (req, res) => {
+    dlog(req)
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { name, email, bio } = user
     res.send({ username, name, email, bio })
   })
 
   router.post('/forgot-password', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username } = req.body
     const resetID = createReset(username, [])
     await email.mail(users[username].email, email.resetPassword({ username, resetID }))
@@ -400,6 +407,7 @@ Promise.all([
   }))
 
   router.post('/make-reset', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     assert(user.isAdmin, 'Not admin!')
     const { username, requires = [] } = req.body
@@ -410,6 +418,7 @@ Promise.all([
   }))
 
   router.get('/reset-password-info', (req, res) => {
+    dlog(req)
     const { id } = req.query
     if (has(sessions, id) && sessions[id].type === 'reset') {
       res.send({ exists: true, requires: sessions[id].requires || [] })
@@ -419,6 +428,7 @@ Promise.all([
   })
 
   router.post('/reset-password', asyncHandler(async (req, res) => {
+    dlog(req)
     const { id, password, email, username: verifyUsername } = req.body
     const username = await resetPassword(id, { password, email, username: verifyUsername })
     const session = createSession(username)
@@ -469,6 +479,7 @@ Promise.all([
   })
 
   router.post('/create-game', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user, username } = verifySession(req.get('X-Session-ID'))
 
     let gameID
@@ -493,6 +504,7 @@ Promise.all([
   }))
 
   router.post('/delete-game', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { gameID, game } = getGameFrom(req, user)
     assert(Object.keys(game.players).length === 0, 'Cannot have anyone in the game!')
@@ -504,6 +516,7 @@ Promise.all([
   }))
 
   router.post('/game-settings', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req, user)
     gameSettings(game, req.body, false)
@@ -512,6 +525,7 @@ Promise.all([
   }))
 
   router.get('/game-settings', (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req, user)
     const {
@@ -616,6 +630,7 @@ Promise.all([
   })
 
   router.post('/join', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { password } = req.body
@@ -631,6 +646,7 @@ Promise.all([
   }))
 
   router.post('/leave', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user, username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { user: target, reason = '' } = req.body
@@ -680,6 +696,7 @@ Promise.all([
   }))
 
   router.post('/start', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req, user)
     assert(!game.started, 'Game already started!')
@@ -705,6 +722,7 @@ Promise.all([
   }))
 
   router.get('/status', (req, res) => {
+    dlog(req)
     const { username } = verifySession(req.get('X-Session-ID'))
     const { gameID, game } = getGameFrom(req)
     assert(game.started, 'Game hasn\'t started!')
@@ -723,6 +741,7 @@ Promise.all([
   })
 
   router.get('/statuses', (req, res) => {
+    dlog(req)
     const { username, user } = verifySession(req.get('X-Session-ID'))
     const { all } = req.query
     const statuses = []
@@ -763,6 +782,7 @@ Promise.all([
   })
 
   router.post('/kill', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req)
     const { self = false } = req.query
@@ -816,6 +836,7 @@ Promise.all([
   }))
 
   router.post('/set-code', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username } = verifySession(req.get('X-Session-ID'))
     const { game } = getGameFrom(req)
     assert(game.started, 'Game hasn\'t started!')
@@ -832,6 +853,7 @@ Promise.all([
   }))
 
   router.post('/shuffle', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req, user)
     assert(game.started, 'Game hasn\'t started!')
@@ -864,6 +886,7 @@ Promise.all([
   }))
 
   router.post('/announce', asyncHandler(async (req, res) => {
+    dlog(req)
     const { user } = verifySession(req.get('X-Session-ID'))
     const { game, gameID } = getGameFrom(req, user)
     const { message = '', includeDead = true } = req.body
@@ -899,6 +922,7 @@ Promise.all([
   })
 
   router.get('/notifications', (req, res) => {
+    dlog(req)
     const { username } = verifySession(req.get('X-Session-ID'))
     let { from = 0, limit = 10 } = req.query
     from = +from
@@ -928,6 +952,7 @@ Promise.all([
   })
 
   router.post('/read', asyncHandler(async (req, res) => {
+    dlog(req)
     const { username } = verifySession(req.get('X-Session-ID'))
     const notifs = notifications[username]
     for (let i = 0; i < notifs.length && !notifs[i].read; i++) {

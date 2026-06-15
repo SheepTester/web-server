@@ -7,6 +7,7 @@ const { asyncHandler } = require('../utils.js')
 const path = require('path')
 const low = require('lowdb')
 const FileAsync = require('lowdb/adapters/FileAsync')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 low(new FileAsync(path.resolve(__dirname, './db-counter.json')))
   .then(db => {
@@ -15,6 +16,7 @@ low(new FileAsync(path.resolve(__dirname, './db-counter.json')))
     })
 
     router.post('/:id/increment', asyncHandler(async (req, res) => {
+      dlog(req)
       await db.set(req.params.id, db.get(req.params.id, 0).value() + 1).write()
       res.end()
     }))

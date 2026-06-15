@@ -1,5 +1,6 @@
 const assert = require('assert')
 const { asyncHandler } = require('../utils.js')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 module.exports = async function main (router, db) {
   // Data that only need to be collected once per user
@@ -27,12 +28,14 @@ module.exports = async function main (router, db) {
 
   // Collect time data (in 10-minute intervals)
   router.post('/urgent-schedule', asyncHandler(async (req, res) => {
+    dlog(req)
     await noteTime()
     res.send({ status: 'No urgent schedule changes.' })
   }))
 
   // Collect the per-user data
   router.post('/check-update', asyncHandler(async (req, res) => {
+    dlog(req)
     const { includeTime = 'yes' } = req.query
     if (includeTime === 'yes') {
       await noteTime()
@@ -58,6 +61,7 @@ module.exports = async function main (router, db) {
   }))
 
   router.get('/users', asyncHandler(async (req, res) => {
+    dlog(req)
     const { key: option, format = 'html' } = req.query
     if (!option) {
       res.render('ask-for-key', {
@@ -83,6 +87,7 @@ module.exports = async function main (router, db) {
   }))
 
   router.get('/times', asyncHandler(async (req, res) => {
+    dlog(req)
     const { format = 'html', from = null, to = null } = req.query
     // MongoDB doesn't ignore undefined values in query
     const range = {}

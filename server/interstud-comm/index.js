@@ -5,6 +5,7 @@ module.exports = router
 const logError = require('../log-error.js')
 const { asyncHandler } = require('../utils.js')
 const { wsReady } = require('../ws.js')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 require('../db.js').then(async client => {
   const db = client.db('interstudent-communication')
@@ -55,6 +56,7 @@ require('../db.js').then(async client => {
   }))
 
   router.post('/hw', asyncHandler(async (req, res) => {
+    dlog(req)
     await dumps.insertOne({
       id: req.query.id,
       dump: req.body
@@ -66,6 +68,7 @@ require('../db.js').then(async client => {
   await wsReady
 
   router.ws('/no-vowels.html', (ws, req) => {
+    dlog(req)
     connections.add(ws)
     let id = null
     let name = 'anonymous'

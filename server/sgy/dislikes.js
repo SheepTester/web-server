@@ -2,6 +2,7 @@
 
 const assert = require('assert')
 const { asyncHandler, responseOk, md5 } = require('../utils.js')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 const validDomain = /^\w{1,50}$/
 const validNid = /^\w?\d{1,16}$/
@@ -20,6 +21,7 @@ module.exports = async function main (router, db) {
   const cookies = new Map()
 
   router.post('/dislike/:domain/:nid', asyncHandler(async (req, res) => {
+    dlog(req)
     const { domain, nid } = req.params
     const { userId, portfolioId, pageId, publicHash } = req.body
     assert(validDomain.test(domain), 'Bad domain. It should be a valid subdomain of Schoology.')
@@ -74,6 +76,7 @@ module.exports = async function main (router, db) {
   }))
 
   router.get('/dislike/:domain/', asyncHandler(async (req, res) => {
+    dlog(req)
     const { domain } = req.params
     assert(validDomain.test(domain), 'Bad domain. It should be a valid subdomain of Schoology.')
     const domainNids = req.query.nids

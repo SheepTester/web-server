@@ -121,6 +121,7 @@ public/as-finance-visits.json
 public/last-pid-server.txt
 public/last-pid-start-server.txt
 public/waitz-ucsd-rec.csv
+public/deprecated-routes.txt
 
 # Gmail credentials
 gmail.json

@@ -6,6 +6,7 @@ const assert = require('assert')
 const validHash = /^[0-9a-f]{1,64}$/i
 const validAsgnId = /^\w{1,64}$/i
 const { asyncHandler } = require('../utils.js')
+const dlog = require('../deprecated-route-usage-logger.js')
 
 require('../db.js').then(async client => {
   const db = client.db('assync')
@@ -19,6 +20,7 @@ require('../db.js').then(async client => {
 
   // Mimics jsonstore.io
   router.get('/:hash/', asyncHandler(async (req, res) => {
+    dlog(req)
     const { hash } = req.params
     assert.ok(validHash.test(hash), 'Hash doesn\'t look like a hash.')
     // https://docs.mongodb.com/drivers/node/usage-examples/findOne
@@ -37,6 +39,7 @@ require('../db.js').then(async client => {
   }))
 
   router.post('/:hash/:asgnId/', asyncHandler(async (req, res) => {
+    dlog(req)
     const { hash, asgnId } = req.params
     assert.ok(validHash.test(hash), 'Hash doesn\'t look like a hash.')
     assert.ok(validAsgnId.test(hash), 'Assignment ID should be from generateID.')
@@ -92,6 +95,7 @@ require('../db.js').then(async client => {
   }))
 
   router.delete('/:hash/:asgnId/', asyncHandler(async (req, res) => {
+    dlog(req)
     const { hash, asgnId } = req.params
     assert.ok(validHash.test(hash), 'Hash doesn\'t look like a hash.')
     assert.ok(validAsgnId.test(hash), 'Assignment ID should be from generateID.')

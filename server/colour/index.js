@@ -4,6 +4,7 @@ const path = require('path')
 const crc32 = require('crc-32')
 const express = require('express')
 const { asyncHandler } = require('../utils')
+const dlog = require('../deprecated-route-usage-logger.js')
 const router = express.Router()
 module.exports = router
 
@@ -13,6 +14,7 @@ const hexStrict = /^[0-9a-f]{6}$/
 const hexLoose = /[0-9a-f]{6}|[0-9a-f]{3}/i
 
 router.get('/:colour', (req, res) => {
+  dlog(req)
   const { colour } = req.params
   if (hexStrict.test(colour)) {
     res.render('colour', { colour, host: HOSTNAME })
@@ -36,6 +38,7 @@ const image = fs.readFile(path.resolve(__dirname, './preview.png'))
 router.get(
   '/:colour/preview.png',
   asyncHandler(async (req, res) => {
+    dlog(req)
     const { colour: hexColour } = req.params
     if (hexStrict.test(hexColour)) {
       // Based on https://github.com/SheepTester/colour-previewer/blob/main/src/handlers.rs#L89-L100
